@@ -16,6 +16,7 @@ import click
 
 import coin_info
 from coin_info import Coin, CoinBuckets, Coins, CoinsInfo, FidoApps, SupportInfo
+from ethereum_definitions import LATEST_DEFINITIONS_TIMESTAMP_FILEPATH
 
 try:
     import termcolor
@@ -124,6 +125,11 @@ MAKO_FILTERS = {
 }
 
 
+def get_ethereum_defs_timestamp() -> int:
+    with open(LATEST_DEFINITIONS_TIMESTAMP_FILEPATH, "r") as f:
+        return int(f.read())
+
+
 def render_file(
     src: str, dst: TextIO, coins: CoinsInfo, support_info: SupportInfo
 ) -> None:
@@ -135,6 +141,7 @@ def render_file(
     result = template.render(
         support_info=support_info,
         supported_on=make_support_filter(support_info),
+        ethereum_defs_timestamp=get_ethereum_defs_timestamp(),
         **coins,
         **MAKO_FILTERS,
     )
@@ -203,7 +210,7 @@ def check_btc(coins: Coins) -> bool:
         for coin in bucket:
             name = coin["name"]
             prefix = ""
-            if name.endswith("Testnet") or name.endswith("Regtest"):
+            if coin["is_testnet"]:
                 color = "green"
             elif name == "Bitcoin":
                 color = "red"
@@ -231,12 +238,7 @@ def check_btc(coins: Coins) -> bool:
         """
         failed = False
         for key, bucket in buckets.items():
-            mainnets = [
-                c
-                for c in bucket
-                if not c["name"].endswith("Testnet")
-                and not c["name"].endswith("Regtest")
-            ]
+            mainnets = [c for c in bucket if not c["is_testnet"]]
 
             have_bitcoin = any(coin["name"] == "Bitcoin" for coin in mainnets)
             supported_mainnets = [c for c in mainnets if not c["unsupported"]]
@@ -283,10 +285,8 @@ def check_btc(coins: Coins) -> bool:
     return check_passed
 
 
-def check_dups(buckets: CoinBuckets, print_at_level: int = logging.WARNING) -> bool:
+def check_dups(buckets: CoinBuckets) -> bool:
     """Analyze and pretty-print results of `coin_info.mark_duplicate_shortcuts`.
-
-    `print_at_level` can be one of logging levels.
 
     The results are buckets of colliding symbols.
     If the collision is only between ERC20 tokens, it's DEBUG.
@@ -350,10 +350,6 @@ def check_dups(buckets: CoinBuckets, print_at_level: int = logging.WARNING) -> b
             # At most 1 supported coin, at most 1 non-token. This is informational only.
             level = logging.DEBUG
 
-        # deciding whether to print
-        if level < print_at_level:
-            continue
-
         if symbol == "_override":
             print_log(level, "force-set duplicates:", dup_str)
         else:
@@ -407,7 +403,7 @@ def check_icons(coins: Coins) -> bool:
     return check_passed
 
 
-IGNORE_NONUNIFORM_KEYS = frozenset(("unsupported", "duplicate"))
+IGNORE_NONUNIFORM_KEYS = frozenset(("unsupported", "duplicate", "coingecko_id"))
 
 
 def check_key_uniformity(coins: Coins) -> bool:
@@ -599,9 +595,8 @@ def cli(colors: bool) -> None:
 # fmt: off
 @click.option("--backend/--no-backend", "-b", default=False, help="Check blockbook/bitcore responses")
 @click.option("--icons/--no-icons", default=True, help="Check icon files")
-@click.option("-d", "--show-duplicates", type=click.Choice(("all", "nontoken", "errors")), default="errors", help="How much information about duplicate shortcuts should be shown.")
 # fmt: on
-def check(backend: bool, icons: bool, show_duplicates: str) -> None:
+def check(backend: bool, icons: bool) -> None:
     """Validate coin definitions.
 
     Checks that every btc-like coin is properly filled out, reports duplicate symbols,
@@ -611,14 +606,7 @@ def check(backend: bool, icons: bool, show_duplicates: str) -> None:
     Uniformity check ignores NEM mosaics and ERC20 tokens, where non-uniformity is
     expected.
 
-    The `--show-duplicates` option can be set to:
-
-    - all: all shortcut collisions are shown, including colliding ERC20 tokens
-
-    - nontoken: only collisions that affect non-ERC20 coins are shown
-
-    - errors: only collisions between non-ERC20 tokens are shown. This is the default,
-    as a collision between two or more non-ERC20 tokens is an error.
+    All shortcut collisions are shown, including colliding ERC20 tokens.
 
     In the output, duplicate ERC tokens will be shown in cyan; duplicate non-tokens
     in red. An asterisk (*) next to symbol name means that even though it was detected
@@ -653,14 +641,7 @@ def check(backend: bool, icons: bool, show_duplicates: str) -> None:
     if not check_eth(defs.eth):
         all_checks_passed = False
 
-    if show_duplicates == "all":
-        dup_level = logging.DEBUG
-    elif show_duplicates == "nontoken":
-        dup_level = logging.INFO
-    else:
-        dup_level = logging.WARNING
-    print("Checking unexpected duplicates...")
-    if not check_dups(buckets, dup_level):
+    if not check_dups(buckets):
         all_checks_passed = False
 
     nontoken_dups = [coin for coin in defs.as_list() if "dup_key_nontoken" in coin]
