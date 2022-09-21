@@ -1178,8 +1178,8 @@ static bool is_segwit_output_script_type(const TxOutputType *txoutput) {
 
 static bool signing_validate_input(const TxInputType *txinput) {
   if (txinput->prev_hash.size != 32) {
-    fsm_sendFailure(FailureType_Failure_ProcessError,
-                    _("Encountered invalid prevhash"));
+    fsm_sendFailure(FailureType_Failure_DataError,
+                    _("Provided prev_hash is invalid."));
     signing_abort();
     return false;
   }
@@ -1191,7 +1191,22 @@ static bool signing_validate_input(const TxInputType *txinput) {
     return false;
   }
 
+  if (!txinput->has_multisig &&
+      txinput->script_type == InputScriptType_SPENDMULTISIG) {
+    fsm_sendFailure(FailureType_Failure_DataError,
+                    _("Multisig details required."));
+    signing_abort();
+    return false;
+  }
+
   if (is_internal_input_script_type(txinput)) {
+    if (txinput->address_n_count == 0) {
+      fsm_sendFailure(FailureType_Failure_DataError,
+                      _("Missing address_n field."));
+      signing_abort();
+      return false;
+    }
+
     if (txinput->has_script_pubkey) {
       // scriptPubKey should only be provided for external inputs
       fsm_sendFailure(FailureType_Failure_DataError,
@@ -1217,6 +1232,14 @@ static bool signing_validate_input(const TxInputType *txinput) {
   } else {
     fsm_sendFailure(FailureType_Failure_DataError,
                     _("Unsupported script type."));
+    signing_abort();
+    return false;
+  }
+
+  if (!coin->decred && txinput->has_decred_tree) {
+    fsm_sendFailure(
+        FailureType_Failure_DataError,
+        _("Decred details provided but Decred coin not specified."));
     signing_abort();
     return false;
   }
@@ -1247,11 +1270,30 @@ static bool signing_validate_input(const TxInputType *txinput) {
     }
 
     if (txinput->orig_hash.size != 32) {
-      fsm_sendFailure(FailureType_Failure_ProcessError,
-                      _("Encountered invalid orig_hash"));
+      fsm_sendFailure(FailureType_Failure_DataError,
+                      _("Provided orig_hash is invalid."));
       signing_abort();
       return false;
     }
+  }
+
+  return true;
+}
+
+static bool signing_validate_prev_input(const TxInputType *txinput) {
+  if (txinput->prev_hash.size != 32) {
+    fsm_sendFailure(FailureType_Failure_DataError,
+                    _("Provided prev_hash is invalid."));
+    signing_abort();
+    return false;
+  }
+
+  if (!coin->decred && txinput->has_decred_tree) {
+    fsm_sendFailure(
+        FailureType_Failure_DataError,
+        _("Decred details provided but Decred coin not specified."));
+    signing_abort();
+    return false;
   }
 
   return true;
@@ -3101,7 +3143,7 @@ void signing_txack(TransactionType *tx) {
       }
       return;
     case STAGE_REQUEST_3_PREV_INPUT:
-      if (!signing_validate_input(&tx->inputs[0])) {
+      if (!signing_validate_prev_input(&tx->inputs[0])) {
         return;
       }
       progress = (idx1 * progress_step + idx2 * progress_meta_step) >>
