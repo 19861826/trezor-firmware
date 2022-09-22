@@ -316,6 +316,29 @@ static int address_to_script_pubkey(const CoinInfo *coin, const char *address,
   return 0;
 }
 
+bool change_output_to_input_script_type(OutputScriptType output_script_type,
+                                        InputScriptType *input_script_type) {
+  switch (output_script_type) {
+    case OutputScriptType_PAYTOADDRESS:
+      *input_script_type = InputScriptType_SPENDADDRESS;
+      return true;
+    case OutputScriptType_PAYTOMULTISIG:
+      *input_script_type = InputScriptType_SPENDMULTISIG;
+      return true;
+    case OutputScriptType_PAYTOWITNESS:
+      *input_script_type = InputScriptType_SPENDWITNESS;
+      return true;
+    case OutputScriptType_PAYTOP2SHWITNESS:
+      *input_script_type = InputScriptType_SPENDP2SHWITNESS;
+      return true;
+    case OutputScriptType_PAYTOTAPROOT:
+      *input_script_type = InputScriptType_SPENDTAPROOT;
+      return true;
+    default:
+      return false;
+  }
+}
+
 int compile_output(const CoinInfo *coin, AmountUnit amount_unit,
                    const HDNode *root, TxOutputType *in, TxOutputBinType *out,
                    bool needs_confirm) {
@@ -358,25 +381,11 @@ int compile_output(const CoinInfo *coin, AmountUnit amount_unit,
     static CONFIDENTIAL HDNode node;
     InputScriptType input_script_type = 0;
 
-    switch (in->script_type) {
-      case OutputScriptType_PAYTOADDRESS:
-        input_script_type = InputScriptType_SPENDADDRESS;
-        break;
-      case OutputScriptType_PAYTOMULTISIG:
-        input_script_type = InputScriptType_SPENDMULTISIG;
-        break;
-      case OutputScriptType_PAYTOWITNESS:
-        input_script_type = InputScriptType_SPENDWITNESS;
-        break;
-      case OutputScriptType_PAYTOP2SHWITNESS:
-        input_script_type = InputScriptType_SPENDP2SHWITNESS;
-        break;
-      case OutputScriptType_PAYTOTAPROOT:
-        input_script_type = InputScriptType_SPENDTAPROOT;
-        break;
-      default:
-        return 0;  // failed to compile output
+    if (!change_output_to_input_script_type(in->script_type,
+                                            &input_script_type)) {
+      return 0;  // failed to compile output
     }
+
     memcpy(&node, root, sizeof(HDNode));
     if (hdnode_private_ckd_cached(&node, in->address_n, in->address_n_count,
                                   NULL) == 0) {
