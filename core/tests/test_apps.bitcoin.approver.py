@@ -168,7 +168,7 @@ class TestApprover(unittest.TestCase):
 
         for txo in outputs:
             if txo.address_n:
-                approver.add_change_output(txo, script_pubkey=bytes(22))
+                await_result(approver.add_change_output(txo, script_pubkey=bytes(22)))
             else:
                 await_result(approver.add_external_output(txo, script_pubkey=bytes(22)))
 
