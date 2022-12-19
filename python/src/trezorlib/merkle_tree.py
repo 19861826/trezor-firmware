@@ -14,69 +14,54 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
+from dataclasses import dataclass, field
 from hashlib import sha256
-from typing import Dict, List, Optional
+import typing as t
 
 
-class Node:
-    """
-    Single node of Merkle tree.
-    """
+@dataclass
+class CachedHash:
+    _hash: t.Optional[bytes] = field(default=None, init=False)
 
-    def __init__(
-        self: "Node",
-        *,
-        left: Optional["Node"] = None,
-        right: Optional["Node"] = None,
-        raw_value: Optional[bytes] = None,
-    ) -> None:
-        self.raw_value = raw_value
-
-        if self.raw_value and (left is not None or right is not None):
-            raise ValueError(
-                "Cannot use `raw_value` together with `left` and/or `right` value."
-            )
-
-        if not self.raw_value and (left is None or right is None):
-            raise ValueError(
-                "`left` and `right` value must not be None when not using `raw_value`."
-            )
-
-        self.hash: Optional[bytes] = None
-        self.left_child = left
-        self.right_child = right
-        self.proof_list: List[bytes] = []
+    @property
+    def hash(self) -> bytes:
+        if self._hash is None:
+            self._hash = self.compute_hash()
+        return self._hash
 
     def compute_hash(self) -> bytes:
-        if not self.hash:
-            if self.raw_value:
-                self.hash = sha256(b"\x00" + self.raw_value).digest()
-            else:
-                left_hash = self.left_child.compute_hash()  # type: ignore ["compute_hash" is not a known member of "None"]
-                right_hash = self.right_child.compute_hash()  # type: ignore ["compute_hash" is not a known member of "None"]
-                hash_a = min(left_hash, right_hash)
-                hash_b = max(left_hash, right_hash)
-                self.hash = sha256(b"\x01" + hash_a + hash_b).digest()
+        raise NotImplementedError
 
-                # distribute proof
-                self.left_child.add_to_proof_list(right_hash)  # type: ignore ["add_to_proof_list" is not a known member of "None"]
-                self.right_child.add_to_proof_list(left_hash)  # type: ignore ["add_to_proof_list" is not a known member of "None"]
 
-        return self.hash
+@dataclass
+class Leaf(CachedHash):
+    value: bytes
+    proof: t.List[bytes] = field(default_factory=list)
+
+    def compute_hash(self) -> bytes:
+        return sha256(b"\x00" + self.value).digest()
+
+    def add_to_proof_list(self, proof_entry: bytes) -> None:
+        self.proof.append(proof_entry)
+
+
+@dataclass
+class Node(CachedHash):
+    left: "Node | Leaf"
+    right: "Node | Leaf"
+
+    def __post_init__(self) -> None:
+        self.left.add_to_proof_list(self.right.hash)
+        self.right.add_to_proof_list(self.left.hash)
+
+    def compute_hash(self) -> bytes:
+        hash_a = min(self.left.hash, self.right.hash)
+        hash_b = max(self.left.hash, self.right.hash)
+        return sha256(b"\x01" + hash_a + hash_b).digest()
 
     def add_to_proof_list(self, proof: bytes) -> None:
-        self.proof_list.append(proof)
-        if not self.raw_value:
-            self.left_child.add_to_proof_list(proof)  # type: ignore ["add_to_proof_list" is not a known member of "None"]
-            self.right_child.add_to_proof_list(proof)  # type: ignore ["add_to_proof_list" is not a known member of "None"]
-
-    def get_proof_list(self) -> List[bytes]:
-        return self.proof_list
-
-    def get_hash(self) -> Optional[bytes]:
-        if self.hash is None:
-            self.compute_hash()
-        return self.hash
+        self.left.add_to_proof_list(proof)
+        self.right.add_to_proof_list(proof)
 
 
 class MerkleTree:
@@ -85,28 +70,22 @@ class MerkleTree:
     for leaf nodes.
     """
 
-    def __init__(self, values: List[bytes]) -> None:
-        if values is None or len(values) < 1:
-            raise ValueError(
-                "`left` and `right` value must not be None when not using `raw_value`."
-            )
-
-        self.leaves = [Node(raw_value=v) for v in values]
+    def __init__(self, values: t.Iterable[bytes]) -> None:
+        self.leaves = [Leaf(v) for v in values]
         self.height = 0
 
         # build the tree
-        current_level = [n for n in self.leaves]
+        current_level = self.leaves[:]
         while len(current_level) > 1:
             # build one level of the tree
             next_level = []
-            while len(current_level) // 2:
-                left_node = current_level.pop()
-                right_node = current_level.pop()
-                next_level.append(Node(left=left_node, right=right_node))
+            while len(current_level) >= 2:
+                left = current_level.pop()
+                right = current_level.pop()
+                next_level.append(Node(left, right))
 
-            if len(current_level) == 1:
-                # odd number of nodes on current level so last node will be "joined" on another level
-                next_level.append(current_level.pop())
+            # add the remaining one or zero nodes to the next level
+            next_level.extend(current_level)
 
             # switch levels and continue
             self.height += 1
@@ -114,17 +93,12 @@ class MerkleTree:
 
         # set root and compute hash
         self.root_node = current_level[0]
-        self.root_node.compute_hash()
 
-    def get_proofs(self) -> Dict[bytes, List[bytes]]:
-        return {
-            n.raw_value: n.get_proof_list()
-            for n in self.leaves
-            if n.raw_value is not None
-        }
+    def get_proofs(self) -> t.Dict[bytes, t.List[bytes]]:
+        return {n.value: n.proof for n in self.leaves}
 
     def get_tree_height(self) -> int:
         return self.height
 
     def get_root_hash(self) -> bytes:
-        return self.root_node.get_hash()  # type: ignore [Expression of type "bytes | None" cannot be assigned to return type "bytes"]
+        return self.root_node.hash

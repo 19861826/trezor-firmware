@@ -16,99 +16,24 @@
 
 import pytest
 
+import typing as t
 from hashlib import sha256
-from typing import Dict, List
 
-from trezorlib.merkle_tree import MerkleTree, Node
+from trezorlib.merkle_tree import MerkleTree, Leaf, Node
 
 
-NODE_VECTORS = (
+NODE_VECTORS = (  # node, expected_hash
     (  # leaf node
-        # node
-        Node(
-            raw_value=bytes.fromhex("dead"),
-        ),
-        # expected hash
-        sha256(b"\x00" + bytes.fromhex("dead")).digest()
+        Leaf(b"hello"),
+        "8a2a5c9b768827de5a9552c38a044c66959c68f6d2f21b5260af54d2f87db827",
     ),
     (  # node with leaf nodes
-        # node
-        Node(
-            left=Node(
-                raw_value=bytes.fromhex("dead"),
-            ),
-            right=Node(
-                raw_value=bytes.fromhex("beef"),
-            ),
-        ),
-        # expected hash
-        sha256(
-            b"\x01"
-            + sha256(b"\x00" + bytes.fromhex("beef")).digest()
-            + sha256(b"\x00" + bytes.fromhex("dead")).digest()
-        ).digest()
+        Node(left=Leaf(b"hello"), right=Leaf(b"world")),
+        "24233339aadcedf287d262413f03c028eb8db397edd32a2878091151b99bf20f",
     ),
-    (  # node with parent node (left)
-        # node
-        Node(
-            left=Node(
-                raw_value=bytes.fromhex("dead"),
-            ),
-            right=Node(
-                raw_value=bytes.fromhex("beef"),
-            ),
-        ).left_child,
-        # expected hash
-        sha256(b"\x00" + bytes.fromhex("dead")).digest()
-    ),
-    (  # node with parent node (right)
-        # node
-        Node(
-            left=Node(
-                raw_value=bytes.fromhex("dead"),
-            ),
-            right=Node(
-                raw_value=bytes.fromhex("beef"),
-            ),
-        ).right_child,
-        # expected hash
-        sha256(b"\x00" + bytes.fromhex("beef")).digest()
-    ),
-)
-
-
-NODE_FAILED_VECTORS = (
-    (  # no inputs
-        # left
-        None,
-        # right
-        None,
-        # raw_value
-        None,
-    ),
-    (  # only left child
-        # left
-        Node(raw_value=bytes.fromhex("dead")),
-        # right
-        None,
-        # raw_value
-        None,
-    ),
-    (  # only right child
-        # left
-        None,
-        # right
-        Node(raw_value=bytes.fromhex("beef")),
-        # raw_value
-        None,
-    ),
-    (  # all inputs
-        # left
-        Node(raw_value=bytes.fromhex("dead")),
-        # right
-        Node(raw_value=bytes.fromhex("beef")),
-        # raw_value
-        bytes.fromhex("deadbeef"),
+    (  # asymmetric node with leaf hanging on second level
+        Node(left=Node(left=Leaf(b"hello"), right=Leaf(b"world")), right=Leaf(b"!")),
+        "c3727420dc97c0dbd89678ee195957e44cfa69f5759b395a07bc171b21468633",
     ),
 )
 
@@ -168,49 +93,32 @@ MERKLE_TREE_VECTORS = (
             ],
             bytes.fromhex("beef"): [
                 sha256(b"\x00" + bytes.fromhex("cafe")).digest(),
-                sha256(b"\x00" + bytes.fromhex("dead")).digest()
+                sha256(b"\x00" + bytes.fromhex("dead")).digest(),
             ],
             bytes.fromhex("cafe"): [
                 sha256(b"\x00" + bytes.fromhex("beef")).digest(),
-                sha256(b"\x00" + bytes.fromhex("dead")).digest()
+                sha256(b"\x00" + bytes.fromhex("dead")).digest(),
             ],
         },
     ),
 )
 
-MERKLE_TREE_FAILED_VECTORS = (
-    (  # no values
-        # values
-        [],
-    ),
-)
-
 
 @pytest.mark.parametrize("node, expected_hash", NODE_VECTORS)
-def test_node(node: Node, expected_hash: bytes) -> None:
-    assert node.compute_hash() == expected_hash
-    assert node.get_hash() == expected_hash
+def test_node(node: t.Union[Node, Leaf], expected_hash: str) -> None:
+    assert node.hash.hex() == expected_hash
 
 
-@pytest.mark.parametrize("left, right, raw_value", NODE_FAILED_VECTORS)
-def test_node_failed(left: Node, right: Node, raw_value: bytes) -> None:
-    with pytest.raises(ValueError):
-        Node(
-            left=left,
-            right=right,
-            raw_value=raw_value,
-        )
-
-
-@pytest.mark.parametrize("values, expected_root_hash, expected_height, expected_proofs", MERKLE_TREE_VECTORS)
-def test_tree(values: List[bytes], expected_root_hash: bytes, expected_height: int, expected_proofs: Dict[bytes, List[bytes]]) -> None:
+@pytest.mark.parametrize(
+    "values, expected_root_hash, expected_height, expected_proofs", MERKLE_TREE_VECTORS
+)
+def test_tree(
+    values: t.List[bytes],
+    expected_root_hash: bytes,
+    expected_height: int,
+    expected_proofs: t.Dict[bytes, t.List[bytes]],
+) -> None:
     mt = MerkleTree(values)
     assert mt.get_root_hash() == expected_root_hash
     assert mt.get_tree_height() == expected_height
     assert mt.get_proofs() == expected_proofs
-
-
-@pytest.mark.parametrize("values", MERKLE_TREE_FAILED_VECTORS)
-def test_tree_failed(values: List[bytes]) -> None:
-    with pytest.raises(ValueError):
-        MerkleTree(values)
