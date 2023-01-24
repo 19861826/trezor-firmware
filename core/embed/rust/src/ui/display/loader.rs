@@ -5,10 +5,10 @@ use crate::ui::{
 };
 use core::slice::from_raw_parts;
 
+use crate::trezorhal::buffers;
 #[cfg(feature = "dma2d")]
-use crate::trezorhal::{
-    buffers::{get_buffer_16bpp, get_buffer_4bpp},
-    dma2d::{dma2d_setup_4bpp_over_4bpp, dma2d_start_blend, dma2d_wait_for_transfer},
+use crate::trezorhal::dma2d::{
+    dma2d_setup_4bpp_over_4bpp, dma2d_start_blend, dma2d_wait_for_transfer,
 };
 
 use crate::ui::{
@@ -304,11 +304,11 @@ pub fn loader_rust(
 
     let n_start = Point::new(-start_vector.y, start_vector.x);
 
-    let b1 = unsafe { get_buffer_16bpp(0, false) };
-    let b2 = unsafe { get_buffer_16bpp(1, false) };
-    let ib1 = unsafe { get_buffer_4bpp(0, true) };
-    let ib2 = unsafe { get_buffer_4bpp(1, true) };
-    let empty_line = unsafe { get_buffer_4bpp(2, true) };
+    let mut b1 = buffers::BufferLine16bpp::get();
+    let mut b2 = buffers::BufferLine16bpp::get();
+    let mut ib1 = buffers::BufferLine4bpp::get_cleared();
+    let mut ib2 = buffers::BufferLine4bpp::get_cleared();
+    let mut empty_line = buffers::BufferLine4bpp::get_cleared();
 
     dma2d_setup_4bpp_over_4bpp(fg_color.into(), bg_color.into(), icon_color.into());
 
@@ -365,7 +365,9 @@ pub fn loader_rust(
         }
 
         dma2d_wait_for_transfer();
-        dma2d_start_blend(&icon_buffer.buffer, &loader_buffer.buffer, clamped.width());
+        unsafe {
+            dma2d_start_blend(&icon_buffer.buffer, &loader_buffer.buffer, clamped.width());
+        }
     }
 
     dma2d_wait_for_transfer();
