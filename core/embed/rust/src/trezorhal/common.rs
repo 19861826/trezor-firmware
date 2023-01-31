@@ -129,12 +129,12 @@ macro_rules! function_name {
 }
 
 macro_rules! unwrap {
-    ($e:expr, $msg:literal) => {{
-        use crate::trezorhal::common::UnwrapOrFatalError;
+    ($e:expr, $msg:expr) => {{
+        use crate::trezorhal::common::{StackCStr, UnwrapOrFatalError};
         use cstr_core::cstr;
         $e.unwrap_or_fatal_error(
             cstr!(stringify!($e)),
-            cstr!($msg),
+            StackCStr::new($msg).cstr(),
             cstr!(file!()),
             line!(),
             function_name!(),
@@ -146,7 +146,7 @@ macro_rules! unwrap {
 }
 
 macro_rules! ensure {
-    ($what:expr, $error:literal) => {
+    ($what:expr, $error:expr) => {
         if !($what) {
             fatal_error!(stringify!($what), $error);
         }
@@ -154,11 +154,12 @@ macro_rules! ensure {
 }
 
 macro_rules! fatal_error {
-    ($expr:expr, $msg:literal) => {{
+    ($expr:expr, $msg:expr) => {{
+        use crate::trezorhal::common::StackCStr;
         use cstr_core::cstr;
         crate::trezorhal::common::__fatal_error(
             cstr!(stringify!($expr)),
-            cstr!($msg),
+            StackCStr::new($msg).cstr(),
             cstr!(file!()),
             line!(),
             function_name!(),
