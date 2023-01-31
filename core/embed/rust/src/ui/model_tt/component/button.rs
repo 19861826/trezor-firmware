@@ -606,7 +606,8 @@ impl IconText {
         }
 
         if use_icon {
-            Icon.draw(icon_pos, self.icon, style.text_color, style.button_color);
+            self.icon
+                .draw(icon_pos, CENTER, style.text_color, style.button_color);
         }
     }
 }
