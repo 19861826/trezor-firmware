@@ -255,50 +255,6 @@ int main(void) {
 
   display_reinit();
 
-#if defined TREZOR_MODEL_T
-  set_core_clock(CLOCK_180_MHZ);
-  display_set_little_endian();
-  touch_power_on();
-  touch_init();
-#endif
-
-#if defined TREZOR_MODEL_R
-  button_init();
-  rgb_led_init();
-#endif
-
-  mpu_config_bootloader();
-
-#if PRODUCTION
-  check_bootloader_version();
-#endif
-
-  // was there reboot with request to stay in bootloader?
-  secbool stay_in_bootloader = secfalse;
-  if (stay_in_bootloader_flag == STAY_IN_BOOTLOADER_FLAG) {
-    stay_in_bootloader = sectrue;
-  }
-
-  // delay to detect touch or skip if we know we are staying in bootloader
-  // anyway
-  uint32_t touched = 0;
-#if defined TREZOR_MODEL_T
-  if (stay_in_bootloader != sectrue) {
-    for (int i = 0; i < 100; i++) {
-      touched = touch_is_detected() | touch_read();
-      if (touched) {
-        break;
-      }
-      hal_delay(1);
-    }
-  }
-#elif defined TREZOR_MODEL_R
-  button_read();
-  if (button_state_left() == 1) {
-    touched = 1;
-  }
-#endif
-
   const image_header *hdr = NULL;
   vendor_header vhdr;
   // detect whether the device contains a valid firmware
@@ -335,6 +291,52 @@ int main(void) {
         check_image_contents(hdr, IMAGE_HEADER_SIZE + vhdr.hdrlen,
                              FIRMWARE_SECTORS, FIRMWARE_SECTORS_COUNT);
   }
+
+#if defined TREZOR_MODEL_T
+  set_core_clock(CLOCK_180_MHZ);
+  display_set_little_endian();
+  ui_screen_boot_empty(firmware_present == sectrue);
+  touch_power_on();
+  touch_init();
+#endif
+
+#if defined TREZOR_MODEL_R
+  button_init();
+  rgb_led_init();
+  ui_screen_boot_empty(firmware_present == sectrue);
+#endif
+
+  mpu_config_bootloader();
+
+#if PRODUCTION
+  check_bootloader_version();
+#endif
+
+  // was there reboot with request to stay in bootloader?
+  secbool stay_in_bootloader = secfalse;
+  if (stay_in_bootloader_flag == STAY_IN_BOOTLOADER_FLAG) {
+    stay_in_bootloader = sectrue;
+  }
+
+  // delay to detect touch or skip if we know we are staying in bootloader
+  // anyway
+  uint32_t touched = 0;
+#if defined TREZOR_MODEL_T
+  if (stay_in_bootloader != sectrue) {
+    for (int i = 0; i < 100; i++) {
+      touched = touch_is_detected() | touch_read();
+      if (touched) {
+        break;
+      }
+      hal_delay(1);
+    }
+  }
+#elif defined TREZOR_MODEL_R
+  button_read();
+  if (button_state_left() == 1) {
+    touched = 1;
+  }
+#endif
 
   // start the bootloader if no or broken firmware found ...
   if (firmware_present != sectrue) {
