@@ -3,6 +3,7 @@ use crate::ui::{
         text::paragraphs::{Paragraph, ParagraphVecShort, Paragraphs, VecExt},
         Child, Component, Event, EventCtx, Label, Pad,
     },
+    display::Icon,
     geometry::{Alignment, Insets, LinearPlacement, Point, Rect},
     model_tt::{
         bootloader::theme::{button_bld_menu, button_bld_menu_item, BLD_BG, MENU, TEXT_NORMAL},
@@ -50,7 +51,7 @@ impl Intro {
             bg: Pad::with_background(BLD_BG),
             title: Child::new(Label::new(title, Alignment::Start, TEXT_TITLE)),
             menu: Child::new(
-                Button::with_icon(MENU)
+                Button::with_icon(Icon::new(MENU))
                     .styled(button_bld_menu())
                     .with_expanded_touch_area(Insets::uniform(13)),
             ),

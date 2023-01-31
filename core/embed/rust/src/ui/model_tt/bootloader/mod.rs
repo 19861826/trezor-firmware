@@ -20,8 +20,8 @@ pub mod theme;
 use crate::ui::{
     component::text::paragraphs::{Paragraph, ParagraphVecShort, Paragraphs, VecExt},
     constant::screen,
-    display::Color,
-    geometry::LinearPlacement,
+    display::{Color, Icon},
+    geometry::{LinearPlacement, CENTER},
     model_tt::{
         bootloader::{
             connect::Connect,
@@ -116,7 +116,7 @@ extern "C" fn screen_install_confirm(
     let text = unwrap!(unsafe { from_c_array(vendor_str, vendor_str_len as usize) });
     let version = unwrap!(unsafe { from_c_str(version) });
 
-    const ICON: Option<&'static [u8]> = Some(RECEIVE);
+    let icon = Some(Icon::new(RECEIVE));
 
     let mut version_str: String<30> = String::new();
 
@@ -152,14 +152,14 @@ extern "C" fn screen_install_confirm(
     let left = Button::with_text("CANCEL").styled(button_install_cancel());
     let right = Button::with_text("INSTALL").styled(button_install_confirm());
 
-    let mut frame = Confirm::new(BLD_BG, ICON, message, left, right, false);
+    let mut frame = Confirm::new(BLD_BG, icon, message, left, right, false);
 
     run(&mut frame)
 }
 
 #[no_mangle]
 extern "C" fn screen_wipe_confirm() -> u32 {
-    const ICON: Option<&'static [u8]> = Some(ERASE_BIG);
+    let icon = Some(Icon::new(ERASE_BIG));
 
     let mut messages = ParagraphVecShort::new();
 
@@ -174,7 +174,7 @@ extern "C" fn screen_wipe_confirm() -> u32 {
     let left = Button::with_text("WIPE").styled(button_wipe_confirm());
     let right = Button::with_text("CANCEL").styled(button_wipe_cancel());
 
-    let mut frame = Confirm::new(BLD_WIPE_COLOR, ICON, message, left, right, true);
+    let mut frame = Confirm::new(BLD_WIPE_COLOR, icon, message, left, right, true);
 
     run(&mut frame)
 }
@@ -207,7 +207,7 @@ fn screen_progress(
     initialize: bool,
     fg_color: Color,
     bg_color: Color,
-    icon: Option<(&[u8], Color)>,
+    icon: Option<(Icon, Color)>,
 ) -> u32 {
     if initialize {
         display::rect_fill(constant::screen(), bg_color);
@@ -235,7 +235,7 @@ extern "C" fn screen_install_progress(progress: u16, initialize: bool, initial_s
         initialize,
         fg_color,
         bg_color,
-        Some((theme::RECEIVE, fg_color)),
+        Some((Icon::new(RECEIVE), fg_color)),
     )
 }
 
@@ -247,7 +247,7 @@ extern "C" fn screen_wipe_progress(progress: u16, initialize: bool) -> u32 {
         initialize,
         theme::BLD_FG,
         BLD_WIPE_COLOR,
-        Some((theme::ERASE_BIG, theme::BLD_FG)),
+        Some((Icon::new(ERASE_BIG), theme::BLD_FG)),
     )
 }
 
@@ -277,7 +277,14 @@ extern "C" fn screen_wipe_success() -> u32 {
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(WHITE, BLD_BG, ICON_SUCCESS_SMALL, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(
+        WHITE,
+        BLD_BG,
+        Icon::new(ICON_SUCCESS_SMALL),
+        m_top,
+        m_bottom,
+        true,
+    );
     frame.place(constant::screen());
     frame.paint();
     0
@@ -299,7 +306,14 @@ extern "C" fn screen_wipe_fail() -> u32 {
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(WHITE, BLD_BG, ICON_WARN_SMALL, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(
+        WHITE,
+        BLD_BG,
+        Icon::new(ICON_WARN_SMALL),
+        m_top,
+        m_bottom,
+        true,
+    );
     frame.place(constant::screen());
     frame.paint();
     0
@@ -314,7 +328,8 @@ extern "C" fn screen_boot_empty(firmware_present: bool) {
         WELCOME_COLOR
     };
     display::rect_fill(constant::screen(), bg);
-    display::icon(constant::screen().center(), LOGO_EMPTY, fg, bg);
+    let icon = Icon::new(LOGO_EMPTY);
+    icon.draw(screen().center(), CENTER, fg, bg);
 }
 
 #[no_mangle]
@@ -332,7 +347,14 @@ extern "C" fn screen_install_fail() -> u32 {
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(WHITE, BLD_BG, ICON_WARN_SMALL, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(
+        WHITE,
+        BLD_BG,
+        Icon::new(ICON_WARN_SMALL),
+        m_top,
+        m_bottom,
+        true,
+    );
     frame.place(constant::screen());
     frame.paint();
     0
@@ -353,7 +375,7 @@ fn screen_install_success_bld(msg: &'static str, complete_draw: bool) -> u32 {
     let mut frame = ResultScreen::new(
         WHITE,
         BLD_BG,
-        ICON_SUCCESS_SMALL,
+        Icon::new(ICON_SUCCESS_SMALL),
         m_top,
         m_bottom,
         complete_draw,
@@ -380,7 +402,7 @@ fn screen_install_success_initial(msg: &'static str, complete_draw: bool) -> u32
     let mut frame = ResultScreen::new(
         FG,
         WELCOME_COLOR,
-        ICON_SUCCESS_SMALL,
+        Icon::new(ICON_SUCCESS_SMALL),
         m_top,
         m_bottom,
         complete_draw,

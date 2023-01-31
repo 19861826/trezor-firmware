@@ -1,5 +1,6 @@
 use crate::ui::{
     component::{Child, Component, Event, EventCtx, Label, Pad},
+    display::Icon,
     geometry::{Alignment, Insets, Point, Rect},
     model_tt::{
         bootloader::theme::{
@@ -29,8 +30,8 @@ pub struct Menu {
 
 impl Menu {
     pub fn new(bld_version: &'static str) -> Self {
-        let content_reboot = IconText::new("REBOOT TREZOR", REBOOT);
-        let content_reset = IconText::new("WIPE TREZOR", ERASE);
+        let content_reboot = IconText::new("REBOOT TREZOR", Icon::new(REBOOT));
+        let content_reset = IconText::new("WIPE TREZOR", Icon::new(ERASE));
 
         let mut title: String<20> = String::new();
         unwrap!(title.push_str("BOOTLOADER "));
@@ -40,7 +41,7 @@ impl Menu {
             bg: Pad::with_background(BLD_BG),
             title: Child::new(Label::new(title, Alignment::Start, TEXT_TITLE)),
             close: Child::new(
-                Button::with_icon(CLOSE)
+                Button::with_icon(Icon::new(CLOSE))
                     .styled(button_bld_menu())
                     .with_expanded_touch_area(Insets::uniform(13)),
             ),

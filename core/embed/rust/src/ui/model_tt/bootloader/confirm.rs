@@ -5,9 +5,8 @@ use crate::ui::{
     },
     constant,
     constant::screen,
-    display,
-    display::Color,
-    geometry::{Offset, Point, Rect},
+    display::{Color, Icon},
+    geometry::{Offset, Point, Rect, CENTER},
     model_tt::{
         component::{Button, ButtonMsg::Clicked},
         constant::{HEIGHT, WIDTH},
@@ -24,7 +23,7 @@ pub enum ConfirmMsg {
 pub struct Confirm<'a> {
     bg: Pad,
     bg_color: Color,
-    icon: Option<&'static [u8]>,
+    icon: Option<Icon>,
     message: Child<Paragraphs<ParagraphVecShort<&'a str>>>,
     left: Child<Button<&'static str>>,
     right: Child<Button<&'static str>>,
@@ -34,7 +33,7 @@ pub struct Confirm<'a> {
 impl<'a> Confirm<'a> {
     pub fn new(
         bg_color: Color,
-        icon: Option<&'static [u8]>,
+        icon: Option<Icon>,
         message: Paragraphs<ParagraphVecShort<&'a str>>,
         left: Button<&'static str>,
         right: Button<&'static str>,
@@ -98,9 +97,9 @@ impl<'a> Component for Confirm<'a> {
         self.bg.paint();
 
         if let Some(icon) = self.icon {
-            display::icon(
+            icon.draw(
                 Point::new(screen().center().x, 45),
-                icon,
+                CENTER,
                 WHITE,
                 self.bg_color,
             );

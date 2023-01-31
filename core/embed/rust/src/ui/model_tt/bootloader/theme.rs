@@ -2,7 +2,7 @@ use crate::{
     alpha,
     ui::{
         component::text::TextStyle,
-        display::{Color, Font},
+        display::{toif::NamedToif, Color, Font},
         model_tt::{
             component::{ButtonStyle, ButtonStyleSheet},
             theme::{BLACK, FG, GREY_DARK, GREY_LIGHT, GREY_MEDIUM, WHITE},
@@ -37,17 +37,21 @@ pub const WELCOME_COLOR: Color = BLACK;
 pub const RADIUS: u8 = 2;
 
 // UI icons.
-pub const ICON_CANCEL: &[u8] = include_res!("model_tt/res/cancel.toif");
-pub const ICON_CONFIRM: &[u8] = include_res!("model_tt/res/confirm.toif");
+pub const ICON_CANCEL: NamedToif = NamedToif(include_res!("model_tt/res/cancel.toif"), "cancel");
+pub const ICON_CONFIRM: NamedToif = NamedToif(include_res!("model_tt/res/confirm.toif"), "confirm");
 
 // BLD icons
-pub const CLOSE: &[u8] = include_res!("model_tt/res/close.toif");
-pub const ERASE: &[u8] = include_res!("model_tt/res/erase.toif");
-pub const ERASE_BIG: &[u8] = include_res!("model_tt/res/erase_big.toif");
-pub const REBOOT: &[u8] = include_res!("model_tt/res/reboot.toif");
-pub const MENU: &[u8] = include_res!("model_tt/res/menu.toif");
-pub const RECEIVE: &[u8] = include_res!("model_tt/res/receive.toif");
-pub const LOGO_EMPTY: &[u8] = include_res!("model_tt/res/trezor_empty.toif");
+pub const CLOSE: NamedToif = NamedToif(include_res!("model_tt/res/close.toif"), "close");
+pub const ERASE: NamedToif = NamedToif(include_res!("model_tt/res/erase.toif"), "erase");
+pub const ERASE_BIG: NamedToif =
+    NamedToif(include_res!("model_tt/res/erase_big.toif"), "erase_big");
+pub const REBOOT: NamedToif = NamedToif(include_res!("model_tt/res/reboot.toif"), "reboot");
+pub const MENU: NamedToif = NamedToif(include_res!("model_tt/res/menu.toif"), "menu");
+pub const RECEIVE: NamedToif = NamedToif(include_res!("model_tt/res/receive.toif"), "receive");
+pub const LOGO_EMPTY: NamedToif = NamedToif(
+    include_res!("model_tt/res/trezor_empty.toif"),
+    "trezor_empty",
+);
 
 pub fn button_install_cancel() -> ButtonStyleSheet {
     ButtonStyleSheet {

@@ -6,8 +6,8 @@ use crate::{
             Child, Component, Event, EventCtx, Never, Pad,
         },
         constant::screen,
-        display::{self, Color},
-        geometry::{Offset, Point, Rect},
+        display::{self, Color, Icon},
+        geometry::{Offset, Point, Rect, CENTER},
     },
 };
 
@@ -18,7 +18,7 @@ pub struct ResultScreen<T> {
     small_pad: Pad,
     fg_color: Color,
     bg_color: Color,
-    icon: &'static [u8],
+    icon: Icon,
     message_top: Child<Paragraphs<ParagraphVecShort<T>>>,
     message_bottom: Child<Paragraphs<ParagraphVecShort<T>>>,
 }
@@ -27,7 +27,7 @@ impl<T: ParagraphStrType> ResultScreen<T> {
     pub fn new(
         fg_color: Color,
         bg_color: Color,
-        icon: &'static [u8],
+        icon: Icon,
         message_top: Paragraphs<ParagraphVecShort<T>>,
         message_bottom: Paragraphs<ParagraphVecShort<T>>,
         complete_draw: bool,
@@ -77,9 +77,9 @@ impl<T: ParagraphStrType> Component for ResultScreen<T> {
         self.bg.paint();
         self.small_pad.paint();
 
-        display::icon(
+        self.icon.draw(
             Point::new(screen().center().x, 45),
-            self.icon,
+            CENTER,
             self.fg_color,
             self.bg_color,
         );

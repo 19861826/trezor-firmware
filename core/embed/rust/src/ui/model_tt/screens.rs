@@ -5,6 +5,7 @@ use crate::ui::{
         text::paragraphs::{Paragraph, ParagraphVecShort, Paragraphs, VecExt},
         Component,
     },
+    display::Icon,
     geometry::LinearPlacement,
     model_tt::{
         component::ResultScreen,
@@ -58,7 +59,7 @@ extern "C" fn screen_fatal_error(msg: *const cty::c_char, file: *const cty::c_ch
     let mut frame = ResultScreen::new(
         WHITE,
         FATAL_ERROR_COLOR,
-        ICON_WARN_SMALL,
+        Icon::new(ICON_WARN_SMALL),
         m_top,
         m_bottom,
         true,
@@ -95,7 +96,7 @@ extern "C" fn screen_error_shutdown(label: *const cty::c_char, msg: *const cty::
     let mut frame = ResultScreen::new(
         WHITE,
         FATAL_ERROR_COLOR,
-        ICON_WARN_SMALL,
+        Icon::new(ICON_WARN_SMALL),
         m_top,
         m_bottom,
         true,
