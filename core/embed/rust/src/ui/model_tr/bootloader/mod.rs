@@ -20,9 +20,9 @@ use crate::ui::{
         Event, EventCtx,
     },
     constant::{screen, BACKLIGHT_NORMAL, WIDTH},
-    display::{fade_backlight_duration, Color, TextOverlay},
+    display::{fade_backlight_duration, Color, Icon, TextOverlay},
     event::ButtonEvent,
-    geometry::{LinearPlacement, Offset, Rect},
+    geometry::{LinearPlacement, Offset, Rect, CENTER},
     model_tr::{
         bootloader::{
             confirm::Confirm,
@@ -108,7 +108,7 @@ extern "C" fn screen_install_confirm(
     let text = unwrap!(unsafe { from_c_array(vendor_str, vendor_str_len as usize) });
     let version = unwrap!(unsafe { from_c_str(version) });
 
-    const ICON: Option<&'static [u8]> = None; //Some(RECEIVE);
+    let icon: Option<Icon> = None;
 
     let msg = if downgrade {
         "Downgrade firmware by"
@@ -133,7 +133,7 @@ extern "C" fn screen_install_confirm(
 
     let mut frame = Confirm::new(
         BLD_BG,
-        ICON,
+        icon,
         Paragraphs::new(message).with_placement(LinearPlacement::vertical().align_at_center()),
         left,
         right,
@@ -145,7 +145,7 @@ extern "C" fn screen_install_confirm(
 
 #[no_mangle]
 extern "C" fn screen_wipe_confirm() -> u32 {
-    const ICON: Option<&'static [u8]> = None; //Some(ERASE_BIG);
+    let icon: Option<Icon> = None; //Some(ERASE_BIG);
 
     let mut messages = ParagraphVecShort::new();
 
@@ -164,7 +164,7 @@ extern "C" fn screen_wipe_confirm() -> u32 {
     let left = Button::with_text(ButtonPos::Left, "WIPE", bld_button_default());
     let right = Button::with_text(ButtonPos::Right, "CANCEL", bld_button_cancel());
 
-    let mut frame = Confirm::new(BLD_BG, ICON, message, left, right, true);
+    let mut frame = Confirm::new(BLD_BG, icon, message, left, right, true);
 
     run(&mut frame)
 }
@@ -303,7 +303,7 @@ extern "C" fn screen_wipe_fail() -> u32 {
 
 #[no_mangle]
 extern "C" fn screen_boot_empty(_firmware_present: bool) {
-    display::icon(SCREEN_ADJ.center(), LOGO_EMPTY, BLD_FG, BLD_BG);
+    Icon::new(LOGO_EMPTY).draw(SCREEN_ADJ.center(), CENTER, BLD_FG, BLD_BG);
 }
 
 #[no_mangle]
