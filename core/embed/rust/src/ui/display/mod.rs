@@ -23,10 +23,12 @@ use crate::{
     error::Error,
     time::Duration,
     trezorhal::{display, qr, time, uzlib::UzlibContext},
-    ui::{component::image::Image, lerp::Lerp},
+    ui::lerp::Lerp,
 };
 use core::slice;
 
+#[cfg(feature = "dma2d")]
+use crate::ui::component::image::Image;
 pub use crate::ui::display::toif::Icon;
 #[cfg(any(feature = "model_tt", feature = "model_tr"))]
 pub use loader::{loader, loader_indeterminate, LOADER_MAX, LOADER_MIN};
