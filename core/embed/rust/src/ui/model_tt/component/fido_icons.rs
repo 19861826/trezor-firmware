@@ -5,6 +5,7 @@
 use crate::ui::display::toif::NamedToif;
 
 
+const ICON_APPLE: NamedToif = NamedToif(include_res!("model_tt/res/fido/icon_apple.toif"), "APPLE");
 const ICON_AWS: NamedToif = NamedToif(include_res!("model_tt/res/fido/icon_aws.toif"), "AWS");
 const ICON_BINANCE: NamedToif = NamedToif(include_res!("model_tt/res/fido/icon_binance.toif"), "BINANCE");
 const ICON_BITBUCKET: NamedToif = NamedToif(include_res!("model_tt/res/fido/icon_bitbucket.toif"), "BITBUCKET");
@@ -43,6 +44,7 @@ const ICON_WEBAUTHN: NamedToif = NamedToif(include_res!("model_tt/res/fido/icon_
 pub fn get_fido_icon_data<T: AsRef<str>>(icon_name: Option<T>) -> NamedToif {
     if let Some(icon_name) = icon_name {
         match icon_name.as_ref() {
+            "apple" => ICON_APPLE,
             "aws" => ICON_AWS,
             "binance" => ICON_BINANCE,
             "bitbucket" => ICON_BITBUCKET,
