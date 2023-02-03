@@ -19,9 +19,12 @@
 
 static bool fsm_ethereumCheckPath(uint32_t address_n_count,
                                   const uint32_t *address_n, bool pubkey_export,
-                                  uint64_t chain_id) {
-  if (ethereum_path_check(address_n_count, address_n, pubkey_export,
-                          chain_id)) {
+                                  const EthereumNetworkInfo *network) {
+  if (!network) {
+    return false;
+  }
+
+  if (ethereum_path_check(address_n_count, address_n, pubkey_export, network)) {
     return true;
   }
 
@@ -31,6 +34,38 @@ static bool fsm_ethereumCheckPath(uint32_t address_n_count,
   }
 
   return fsm_layoutPathWarning();
+}
+
+static const EthereumDefinitionsDecoded *get_definitions(
+    bool has_definitions, const EthereumDefinitions *definitions,
+    uint64_t chain_id, const char *to) {
+  const EncodedNetwork *encoded_network = NULL;
+  const EncodedToken *encoded_token = NULL;
+  if (has_definitions && definitions) {
+    if (definitions->has_encoded_network) {
+      encoded_network = &definitions->encoded_network;
+    }
+    if (definitions->has_encoded_token) {
+      encoded_token = &definitions->encoded_token;
+    }
+  }
+
+  return get_EthereumDefinitionsDecoded(encoded_network, encoded_token,
+                                        chain_id, SLIP44_UNKNOWN, to);
+}
+
+static const EthereumNetworkInfo *get_network_definition_only(
+    bool has_encoded_network, const EncodedNetwork *encoded_network,
+    const uint32_t slip44) {
+  const EncodedNetwork *en = NULL;
+  if (has_encoded_network) {
+    en = (const EncodedNetwork *)encoded_network;
+  }
+
+  const EthereumDefinitionsDecoded *defs =
+      get_EthereumDefinitionsDecoded(en, NULL, CHAIN_ID_UNKNOWN, slip44, NULL);
+
+  return defs ? &defs->network : NULL;
 }
 
 void fsm_msgEthereumGetPublicKey(const EthereumGetPublicKey *msg) {
@@ -43,12 +78,6 @@ void fsm_msgEthereumGetPublicKey(const EthereumGetPublicKey *msg) {
   // we use Bitcoin-like format for ETH
   const CoinInfo *coin = fsm_getCoin(true, "Bitcoin");
   if (!coin) return;
-
-  if (!fsm_ethereumCheckPath(msg->address_n_count, msg->address_n, true,
-                             CHAIN_ID_UNKNOWN)) {
-    layoutHome();
-    return;
-  }
 
   const char *curve = coin->curve_name;
   uint32_t fingerprint;
@@ -93,8 +122,12 @@ void fsm_msgEthereumSignTx(const EthereumSignTx *msg) {
 
   CHECK_PIN
 
-  if (!fsm_ethereumCheckPath(msg->address_n_count, msg->address_n, false,
-                             msg->chain_id)) {
+  const EthereumDefinitionsDecoded *defs =
+      get_definitions(msg->has_definitions, &msg->definitions, msg->chain_id,
+                      msg->has_to ? msg->to : NULL);
+
+  if (!defs || !fsm_ethereumCheckPath(msg->address_n_count, msg->address_n,
+                                      false, &defs->network)) {
     layoutHome();
     return;
   }
@@ -103,7 +136,7 @@ void fsm_msgEthereumSignTx(const EthereumSignTx *msg) {
                                           msg->address_n_count, NULL);
   if (!node) return;
 
-  ethereum_signing_init(msg, node);
+  ethereum_signing_init(msg, node, defs);
 }
 
 void fsm_msgEthereumSignTxEIP1559(const EthereumSignTxEIP1559 *msg) {
@@ -111,8 +144,12 @@ void fsm_msgEthereumSignTxEIP1559(const EthereumSignTxEIP1559 *msg) {
 
   CHECK_PIN
 
-  if (!fsm_ethereumCheckPath(msg->address_n_count, msg->address_n, false,
-                             msg->chain_id)) {
+  const EthereumDefinitionsDecoded *defs =
+      get_definitions(msg->has_definitions, &msg->definitions, msg->chain_id,
+                      msg->has_to ? msg->to : NULL);
+
+  if (!defs || !fsm_ethereumCheckPath(msg->address_n_count, msg->address_n,
+                                      false, &defs->network)) {
     layoutHome();
     return;
   }
@@ -121,7 +158,7 @@ void fsm_msgEthereumSignTxEIP1559(const EthereumSignTxEIP1559 *msg) {
                                           msg->address_n_count, NULL);
   if (!node) return;
 
-  ethereum_signing_init_eip1559(msg, node);
+  ethereum_signing_init_eip1559(msg, node, defs);
 }
 
 void fsm_msgEthereumTxAck(const EthereumTxAck *msg) {
@@ -137,8 +174,15 @@ void fsm_msgEthereumGetAddress(const EthereumGetAddress *msg) {
 
   CHECK_PIN
 
+  uint32_t slip44 =
+      (msg->address_n_count > 1) ? (msg->address_n[1] & PATH_UNHARDEN_MASK) : 0;
+
+  const EthereumNetworkInfo *network = get_network_definition_only(
+      msg->has_encoded_network, (const EncodedNetwork *)&msg->encoded_network,
+      slip44);
+
   if (!fsm_ethereumCheckPath(msg->address_n_count, msg->address_n, false,
-                             CHAIN_ID_UNKNOWN)) {
+                             network)) {
     layoutHome();
     return;
   }
@@ -153,9 +197,6 @@ void fsm_msgEthereumGetAddress(const EthereumGetAddress *msg) {
     layoutHome();
     return;
   }
-
-  uint32_t slip44 =
-      (msg->address_n_count > 1) ? (msg->address_n[1] & PATH_UNHARDEN_MASK) : 0;
   bool rskip60 = false;
   uint64_t chain_id = 0;
   // constants from trezor-common/defs/ethereum/networks.json
@@ -195,8 +236,15 @@ void fsm_msgEthereumSignMessage(const EthereumSignMessage *msg) {
 
   CHECK_PIN
 
+  uint32_t slip44 =
+      (msg->address_n_count > 1) ? (msg->address_n[1] & PATH_UNHARDEN_MASK) : 0;
+
+  const EthereumNetworkInfo *network = get_network_definition_only(
+      msg->has_encoded_network, (const EncodedNetwork *)&msg->encoded_network,
+      slip44);
+
   if (!fsm_ethereumCheckPath(msg->address_n_count, msg->address_n, false,
-                             CHAIN_ID_UNKNOWN)) {
+                             network)) {
     layoutHome();
     return;
   }
@@ -282,8 +330,15 @@ void fsm_msgEthereumSignTypedHash(const EthereumSignTypedHash *msg) {
     return;
   }
 
+  uint32_t slip44 =
+      (msg->address_n_count > 1) ? (msg->address_n[1] & PATH_UNHARDEN_MASK) : 0;
+
+  const EthereumNetworkInfo *network = get_network_definition_only(
+      msg->has_encoded_network, (const EncodedNetwork *)&msg->encoded_network,
+      slip44);
+
   if (!fsm_ethereumCheckPath(msg->address_n_count, msg->address_n, false,
-                             CHAIN_ID_UNKNOWN)) {
+                             network)) {
     layoutHome();
     return;
   }
