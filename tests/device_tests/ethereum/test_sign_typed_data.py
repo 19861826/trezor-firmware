@@ -18,9 +18,11 @@ import pytest
 
 from trezorlib import ethereum, exceptions
 from trezorlib.debuglink import TrezorClientDebugLink as Client
-from trezorlib.tools import parse_path
+from trezorlib.exceptions import TrezorFailure
+from trezorlib.tools import UH_, parse_path
 
 from ...common import parametrize_using_common_fixtures
+from .ethereum_common import get_encoded_network_definition
 
 SHOW_MORE = (143, 167)
 
@@ -32,14 +34,53 @@ pytestmark = [pytest.mark.altcoin, pytest.mark.ethereum]
 def test_ethereum_sign_typed_data(client: Client, parameters, result):
     with client:
         address_n = parse_path(parameters["path"])
+        encoded_network_slip44 = UH_(address_n[1])
+        if "definitions" in parameters:
+            encoded_network_slip44 = parameters["definitions"].get(
+                "slip44", encoded_network_slip44
+            )
+
+        defs = ethereum.messages.EthereumDefinitions(
+            encoded_network=get_encoded_network_definition(
+                slip44=encoded_network_slip44,
+            )
+        )
+
         ret = ethereum.sign_typed_data(
             client,
             address_n,
             parameters["data"],
             metamask_v4_compat=parameters["metamask_v4_compat"],
+            definitions=defs,
         )
         assert ret.address == result["address"]
         assert f"0x{ret.signature.hex()}" == result["sig"]
+
+
+@pytest.mark.skip_t1
+@parametrize_using_common_fixtures("ethereum/sign_typed_data.failed.json")
+def test_ethereum_sign_typed_data_failed(client: Client, parameters, result):
+    address_n = parse_path(parameters["path"])
+    encoded_network_slip44 = UH_(address_n[1])
+    if "definitions" in parameters:
+        encoded_network_slip44 = parameters["definitions"].get(
+            "slip44", encoded_network_slip44
+        )
+
+    defs = ethereum.messages.EthereumDefinitions(
+        encoded_network=get_encoded_network_definition(
+            slip44=encoded_network_slip44,
+        )
+    )
+
+    with pytest.raises(TrezorFailure, match=result["error"]):
+        ethereum.sign_typed_data(
+            client,
+            address_n,
+            parameters["data"],
+            metamask_v4_compat=parameters["metamask_v4_compat"],
+            definitions=defs,
+        )
 
 
 @pytest.mark.skip_t2
@@ -47,6 +88,15 @@ def test_ethereum_sign_typed_data(client: Client, parameters, result):
 def test_ethereum_sign_typed_data_blind(client: Client, parameters, result):
     with client:
         address_n = parse_path(parameters["path"])
+        encoded_network_slip44 = UH_(address_n[1])
+        if "definitions" in parameters:
+            encoded_network_slip44 = parameters["definitions"].get(
+                "slip44", encoded_network_slip44
+            )
+
+        encoded_network = get_encoded_network_definition(
+            slip44=encoded_network_slip44,
+        )
         ret = ethereum.sign_typed_data_hash(
             client,
             address_n,
@@ -55,9 +105,37 @@ def test_ethereum_sign_typed_data_blind(client: Client, parameters, result):
             ethereum.decode_hex(parameters["message_hash"])
             if parameters["message_hash"]
             else None,
+            encoded_network=encoded_network,
         )
         assert ret.address == result["address"]
         assert f"0x{ret.signature.hex()}" == result["sig"]
+
+
+@pytest.mark.skip_t2
+@parametrize_using_common_fixtures("ethereum/sign_typed_data.failed.json")
+def test_ethereum_sign_typed_data_blind_failed(client: Client, parameters, result):
+    address_n = parse_path(parameters["path"])
+    encoded_network_slip44 = UH_(address_n[1])
+    if "definitions" in parameters:
+        encoded_network_slip44 = parameters["definitions"].get(
+            "slip44", encoded_network_slip44
+        )
+
+    encoded_network = get_encoded_network_definition(
+        slip44=encoded_network_slip44,
+    )
+
+    with pytest.raises(TrezorFailure, match=result["error"]):
+        ethereum.sign_typed_data_hash(
+            client,
+            address_n,
+            ethereum.decode_hex(parameters["domain_separator_hash"]),
+            # message hash is empty for domain-only hashes
+            ethereum.decode_hex(parameters["message_hash"])
+            if parameters["message_hash"]
+            else None,
+            encoded_network=encoded_network,
+        )
 
 
 # Being the same as the first object in ethereum/sign_typed_data.json
@@ -142,6 +220,12 @@ def input_flow_cancel(client: Client):
 
 @pytest.mark.skip_t1
 def test_ethereum_sign_typed_data_show_more_button(client: Client):
+    defs = ethereum.messages.EthereumDefinitions(
+        encoded_network=get_encoded_network_definition(
+            slip44=60,
+        )
+    )
+
     with client:
         client.watch_layout()
         client.set_input_flow(input_flow_show_more(client))
@@ -150,11 +234,18 @@ def test_ethereum_sign_typed_data_show_more_button(client: Client):
             parse_path("m/44h/60h/0h/0/0"),
             DATA,
             metamask_v4_compat=True,
+            definitions=defs,
         )
 
 
 @pytest.mark.skip_t1
 def test_ethereum_sign_typed_data_cancel(client: Client):
+    defs = ethereum.messages.EthereumDefinitions(
+        encoded_network=get_encoded_network_definition(
+            slip44=60,
+        )
+    )
+
     with client, pytest.raises(exceptions.Cancelled):
         client.watch_layout()
         client.set_input_flow(input_flow_cancel(client))
@@ -163,4 +254,5 @@ def test_ethereum_sign_typed_data_cancel(client: Client):
             parse_path("m/44h/60h/0h/0/0"),
             DATA,
             metamask_v4_compat=True,
+            definitions=defs,
         )

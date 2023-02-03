@@ -14,6 +14,10 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
+import pathlib
+import tempfile
+from typing import Optional
+
 import pytest
 
 from trezorlib import ethereum, exceptions, messages
@@ -22,6 +26,10 @@ from trezorlib.exceptions import TrezorFailure
 from trezorlib.tools import parse_path
 
 from ...common import parametrize_using_common_fixtures
+from .ethereum_common import (
+    get_encoded_network_definition,
+    get_encoded_token_definition,
+)
 
 TO_ADDR = "0x1d1c328764a41bda0492b66baa30c4a339ff85ef"
 SHOW_ALL = (143, 167)
@@ -29,10 +37,67 @@ GO_BACK = (16, 220)
 
 pytestmark = [pytest.mark.altcoin, pytest.mark.ethereum]
 
+ONLINE_DEFS_ZIP_FILE = tempfile.NamedTemporaryFile()
+with open(ONLINE_DEFS_ZIP_FILE.name, mode="w+b") as tf:
+    try:
+        tf.write(
+            ethereum.download_from_url(
+                ethereum.DEFS_BASE_URL + ethereum.DEFS_ZIP_FILENAME
+            )
+        )
+    except RuntimeError:
+        pass
+
+
+def get_definitions(
+    parameters: dict,
+    zip_file: Optional[pathlib.Path] = None,
+) -> messages.EthereumDefinitions:
+    chain_id = parameters["chain_id"]
+    token_chain_id = parameters["chain_id"]
+    token_address = parameters.get("to_address")
+    timestamp = None
+
+    if "definitions" in parameters:
+        chain_id = parameters["definitions"].get("chain_id", chain_id)
+        token_chain_id = parameters["definitions"].get("token_chain_id", token_chain_id)
+        token_address = parameters["definitions"].get("to_address", token_address)
+        timestamp = parameters["definitions"].get("timestamp")
+
+    if zip_file:
+        encoded_network = ethereum.get_definition_from_zip(
+            zip_file=zip_file,
+            path_inside_zip=ethereum.get_network_definition_path(
+                chain_id=chain_id,
+            ),
+        )
+        encoded_token = ethereum.get_definition_from_zip(
+            zip_file=zip_file,
+            path_inside_zip=ethereum.get_token_definition_path(
+                chain_id=token_chain_id,
+                token_address=token_address,
+            ),
+        )
+    else:
+        encoded_network = get_encoded_network_definition(
+            chain_id=chain_id,
+            timestamp=timestamp,
+        )
+        encoded_token = get_encoded_token_definition(
+            chain_id=token_chain_id,
+            token_address=token_address,
+            timestamp=timestamp,
+        )
+
+    return messages.EthereumDefinitions(
+        encoded_network=encoded_network, encoded_token=encoded_token
+    )
+
 
 @parametrize_using_common_fixtures(
     "ethereum/sign_tx.json",
     "ethereum/sign_tx_eip155.json",
+    "ethereum/sign_tx_definitions.json",
 )
 def test_signtx(client: Client, parameters, result):
     with client:
@@ -47,6 +112,7 @@ def test_signtx(client: Client, parameters, result):
             value=int(parameters["value"], 16),
             tx_type=parameters["tx_type"],
             data=bytes.fromhex(parameters["data"]),
+            definitions=get_definitions(parameters),
         )
 
     expected_v = 2 * parameters["chain_id"] + 35
@@ -56,7 +122,58 @@ def test_signtx(client: Client, parameters, result):
     assert sig_v == result["sig_v"]
 
 
-@parametrize_using_common_fixtures("ethereum/sign_tx_eip1559.json")
+@parametrize_using_common_fixtures(
+    "ethereum/sign_tx.json",
+    "ethereum/sign_tx_eip155.json",
+    "ethereum/sign_tx_definitions.json",
+)
+def test_signtx_online_definitions(client: Client, parameters, result):
+    with client:
+        sig_v, sig_r, sig_s = ethereum.sign_tx(
+            client,
+            n=parse_path(parameters["path"]),
+            nonce=int(parameters["nonce"], 16),
+            gas_price=int(parameters["gas_price"], 16),
+            gas_limit=int(parameters["gas_limit"], 16),
+            to=parameters["to_address"],
+            chain_id=parameters["chain_id"],
+            value=int(parameters["value"], 16),
+            tx_type=parameters["tx_type"],
+            data=bytes.fromhex(parameters["data"]),
+            definitions=get_definitions(
+                parameters, pathlib.Path(ONLINE_DEFS_ZIP_FILE.name)
+            ),
+        )
+
+    expected_v = 2 * parameters["chain_id"] + 35
+    assert sig_v in (expected_v, expected_v + 1)
+    assert sig_r.hex() == result["sig_r"]
+    assert sig_s.hex() == result["sig_s"]
+    assert sig_v == result["sig_v"]
+
+
+@parametrize_using_common_fixtures("ethereum/sign_tx_definitions.failed.json")
+def test_signtx_failed(client: Client, parameters, result):
+    with pytest.raises(TrezorFailure, match=result["error"]):
+        ethereum.sign_tx(
+            client,
+            n=parse_path(parameters["path"]),
+            nonce=int(parameters["nonce"], 16),
+            gas_price=int(parameters["gas_price"], 16),
+            gas_limit=int(parameters["gas_limit"], 16),
+            to=parameters["to_address"],
+            chain_id=parameters["chain_id"],
+            value=int(parameters["value"], 16),
+            tx_type=parameters["tx_type"],
+            data=bytes.fromhex(parameters["data"]),
+            definitions=get_definitions(parameters),
+        )
+
+
+@parametrize_using_common_fixtures(
+    "ethereum/sign_tx_eip1559.json",
+    "ethereum/sign_tx_eip1559_definitions.json",
+)
 def test_signtx_eip1559(client: Client, parameters, result):
     with client:
         sig_v, sig_r, sig_s = ethereum.sign_tx_eip1559(
@@ -70,11 +187,30 @@ def test_signtx_eip1559(client: Client, parameters, result):
             chain_id=parameters["chain_id"],
             value=int(parameters["value"], 16),
             data=bytes.fromhex(parameters["data"]),
+            definitions=get_definitions(parameters),
         )
 
     assert sig_r.hex() == result["sig_r"]
     assert sig_s.hex() == result["sig_s"]
     assert sig_v == result["sig_v"]
+
+
+@parametrize_using_common_fixtures("ethereum/sign_tx_eip1559_definitions.failed.json")
+def test_signtx_eip1559_failed(client: Client, parameters, result):
+    with pytest.raises(TrezorFailure, match=result["error"]):
+        ethereum.sign_tx_eip1559(
+            client,
+            n=parse_path(parameters["path"]),
+            nonce=int(parameters["nonce"], 16),
+            gas_limit=int(parameters["gas_limit"], 16),
+            max_gas_fee=int(parameters["max_gas_fee"], 16),
+            max_priority_fee=int(parameters["max_priority_fee"], 16),
+            to=parameters["to_address"],
+            chain_id=parameters["chain_id"],
+            value=int(parameters["value"], 16),
+            data=bytes.fromhex(parameters["data"]),
+            definitions=get_definitions(parameters),
+        )
 
 
 def test_sanity_checks(client: Client):
