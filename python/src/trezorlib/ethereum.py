@@ -14,16 +14,32 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
+import pathlib
 import re
+import zipfile
 from typing import TYPE_CHECKING, Any, AnyStr, Dict, List, Optional, Tuple
 
-from . import exceptions, messages
+import requests
+
+from . import exceptions, merkle_tree, messages
 from .tools import expect, prepare_message_bytes, session
 
 if TYPE_CHECKING:
     from .client import TrezorClient
     from .tools import Address
     from .protobuf import MessageType
+
+
+# TODO: change once we know the urls
+DEFS_BASE_URL = "https://firmware.corp.sldev.cz/eth-definitions/"
+DEFS_URL_LOOKUP_TEMPLATE = DEFS_BASE_URL + "{lookup_type}/{id}/{name}"
+
+DEFS_ZIP_FILENAME = "definitions-latest.zip"
+DEFS_ZIP_TOPLEVEL_DIR = pathlib.PurePath("definitions-latest")
+DEFS_NETWORK_BY_CHAINID_LOOKUP_TYPE = "by_chain_id"
+DEFS_NETWORK_BY_SLIP44_LOOKUP_TYPE = "by_slip44"
+DEFS_NETWORK_URI_NAME = "network.dat"
+DEFS_TOKEN_URI_NAME = "token_{hex_address}.dat"
 
 
 def int_to_big_endian(value: int) -> bytes:
@@ -141,24 +157,181 @@ def encode_data(value: Any, type_name: str) -> bytes:
     raise ValueError(f"Unsupported data type for direct field encoding: {type_name}")
 
 
+def download_from_url(url: str) -> bytes:
+    try:
+        r = requests.get(url)
+        r.raise_for_status()
+        return r.content
+    except requests.exceptions.HTTPError as err:
+        raise RuntimeError(err.response)
+
+
+def get_network_definition_url(
+    chain_id: Optional[int] = None, slip44: Optional[int] = None
+) -> str:
+    if not ((chain_id is None) != (slip44 is None)):  # not XOR
+        raise ValueError(
+            "Exactly one of chain_id or slip44 parameters are needed to construct network definition url."
+        )
+
+    if chain_id is not None:
+        return DEFS_URL_LOOKUP_TEMPLATE.format(
+            lookup_type=DEFS_NETWORK_BY_CHAINID_LOOKUP_TYPE,
+            id=chain_id,
+            name=DEFS_NETWORK_URI_NAME,
+        )
+    else:
+        return DEFS_URL_LOOKUP_TEMPLATE.format(
+            lookup_type=DEFS_NETWORK_BY_SLIP44_LOOKUP_TYPE,
+            id=slip44,
+            name=DEFS_NETWORK_URI_NAME,
+        )
+
+
+def get_token_definition_url(chain_id: int = None, token_address: str = None) -> str:
+    if chain_id is None or token_address is None:
+        raise ValueError(
+            "Both chain_id and token_address parameters are needed to construct token definition url."
+        )
+
+    addr = token_address.lower()
+    if addr.startswith("0x"):
+        addr = addr[2:]
+
+    return DEFS_URL_LOOKUP_TEMPLATE.format(
+        lookup_type=DEFS_NETWORK_BY_CHAINID_LOOKUP_TYPE,
+        id=chain_id,
+        name=DEFS_TOKEN_URI_NAME.format(hex_address=addr),
+    )
+
+
+def get_network_definition_path(
+    chain_id: Optional[int] = None,
+    slip44: Optional[int] = None,
+) -> pathlib.PurePath:
+    if not ((chain_id is None) != (slip44 is None)):  # not XOR
+        raise ValueError(
+            "Exactly one of chain_id or slip44 parameters are needed to construct network definition path."
+        )
+
+    if chain_id is not None:
+        return (
+            DEFS_ZIP_TOPLEVEL_DIR
+            / DEFS_NETWORK_BY_CHAINID_LOOKUP_TYPE
+            / str(chain_id)
+            / DEFS_NETWORK_URI_NAME
+        )
+    else:
+        return (
+            DEFS_ZIP_TOPLEVEL_DIR
+            / DEFS_NETWORK_BY_SLIP44_LOOKUP_TYPE
+            / str(slip44)
+            / DEFS_NETWORK_URI_NAME
+        )
+
+
+def get_token_definition_path(
+    chain_id: int = None,
+    token_address: str = None,
+) -> pathlib.PurePath:
+    if chain_id is None or token_address is None:
+        raise ValueError(
+            "Both chain_id and token_address parameters are needed to construct token definition path."
+        )
+
+    addr = token_address.lower()
+    if addr.startswith("0x"):
+        addr = addr[2:]
+
+    return (
+        DEFS_ZIP_TOPLEVEL_DIR
+        / DEFS_NETWORK_BY_CHAINID_LOOKUP_TYPE
+        / str(chain_id)
+        / DEFS_TOKEN_URI_NAME.format(hex_address=addr)
+    )
+
+
+def get_all_completed_definitions_from_zip(
+    zip_file: pathlib.Path,
+) -> Dict[str, Optional[bytes]]:
+    if not zip_file.exists() or not zip_file.is_file():
+        return {}
+
+    all_definitions_dict = {}
+    mt_leaves = []
+    signature = None
+
+    with zipfile.ZipFile(zip_file) as zf:
+        names = zf.namelist()
+        signature = zf.read(names[0])[-64:]
+
+        for name in names:
+            all_definitions_dict[name] = zf.read(name)[:-64]
+            if name.startswith(
+                str(DEFS_ZIP_TOPLEVEL_DIR / DEFS_NETWORK_BY_CHAINID_LOOKUP_TYPE)
+            ):
+                mt_leaves.append(all_definitions_dict[name])
+
+    # sort encoded definitions
+    mt_leaves.sort()
+
+    # build Merkle tree
+    mt = merkle_tree.MerkleTree(mt_leaves)
+    proofs = mt.get_proofs()
+
+    # complete definitions
+    for path, definition in all_definitions_dict.items():
+        proof = proofs[definition]
+        # append number of hashes in proof
+        all_definitions_dict[path] += len(proof).to_bytes(1, "big")
+        # append proof itself
+        for p in proof:
+            all_definitions_dict[path] += p
+        # append signed tree root hash
+        all_definitions_dict[path] += signature
+
+    return all_definitions_dict
+
+
+def get_definition_from_zip(
+    zip_file: pathlib.Path,
+    path_inside_zip: pathlib.PurePath,
+) -> Optional[bytes]:
+    all_defs = get_all_completed_definitions_from_zip(zip_file)
+
+    return all_defs.get(str(path_inside_zip))
+
+
 # ====== Client functions ====== #
 
 
 @expect(messages.EthereumAddress, field="address", ret_type=str)
 def get_address(
-    client: "TrezorClient", n: "Address", show_display: bool = False
+    client: "TrezorClient",
+    n: "Address",
+    show_display: bool = False,
+    encoded_network: Optional[bytes] = None,
 ) -> "MessageType":
     return client.call(
-        messages.EthereumGetAddress(address_n=n, show_display=show_display)
+        messages.EthereumGetAddress(
+            address_n=n,
+            show_display=show_display,
+            encoded_network=encoded_network,
+        )
     )
 
 
 @expect(messages.EthereumPublicKey)
 def get_public_node(
-    client: "TrezorClient", n: "Address", show_display: bool = False
+    client: "TrezorClient",
+    n: "Address",
+    show_display: bool = False,
 ) -> "MessageType":
     return client.call(
-        messages.EthereumGetPublicKey(address_n=n, show_display=show_display)
+        messages.EthereumGetPublicKey(
+            address_n=n,
+            show_display=show_display,
+        )
     )
 
 
@@ -174,6 +347,7 @@ def sign_tx(
     data: Optional[bytes] = None,
     chain_id: Optional[int] = None,
     tx_type: Optional[int] = None,
+    definitions: Optional[messages.EthereumDefinitions] = None,
 ) -> Tuple[int, bytes, bytes]:
     if chain_id is None:
         raise exceptions.TrezorException("Chain ID cannot be undefined")
@@ -187,6 +361,7 @@ def sign_tx(
         to=to,
         chain_id=chain_id,
         tx_type=tx_type,
+        definitions=definitions,
     )
 
     if data is None:
@@ -231,6 +406,7 @@ def sign_tx_eip1559(
     max_gas_fee: int,
     max_priority_fee: int,
     access_list: Optional[List[messages.EthereumAccessList]] = None,
+    definitions: Optional[messages.EthereumDefinitions] = None,
 ) -> Tuple[int, bytes, bytes]:
     length = len(data)
     data, chunk = data[1024:], data[:1024]
@@ -246,6 +422,7 @@ def sign_tx_eip1559(
         access_list=access_list,
         data_length=length,
         data_initial_chunk=chunk,
+        definitions=definitions,
     )
 
     response = client.call(msg)
@@ -265,11 +442,16 @@ def sign_tx_eip1559(
 
 @expect(messages.EthereumMessageSignature)
 def sign_message(
-    client: "TrezorClient", n: "Address", message: AnyStr
+    client: "TrezorClient",
+    n: "Address",
+    message: AnyStr,
+    encoded_network: Optional[bytes] = None,
 ) -> "MessageType":
     return client.call(
         messages.EthereumSignMessage(
-            address_n=n, message=prepare_message_bytes(message)
+            address_n=n,
+            message=prepare_message_bytes(message),
+            encoded_network=encoded_network,
         )
     )
 
@@ -281,6 +463,7 @@ def sign_typed_data(
     data: Dict[str, Any],
     *,
     metamask_v4_compat: bool = True,
+    definitions: Optional[messages.EthereumDefinitions] = None,
 ) -> "MessageType":
     data = sanitize_typed_data(data)
     types = data["types"]
@@ -289,6 +472,7 @@ def sign_typed_data(
         address_n=n,
         primary_type=data["primaryType"],
         metamask_v4_compat=metamask_v4_compat,
+        definitions=definitions,
     )
     response = client.call(request)
 
@@ -348,7 +532,10 @@ def sign_typed_data(
 
 
 def verify_message(
-    client: "TrezorClient", address: str, signature: bytes, message: AnyStr
+    client: "TrezorClient",
+    address: str,
+    signature: bytes,
+    message: AnyStr,
 ) -> bool:
     try:
         resp = client.call(
@@ -369,11 +556,13 @@ def sign_typed_data_hash(
     n: "Address",
     domain_hash: bytes,
     message_hash: Optional[bytes],
+    encoded_network: Optional[bytes] = None,
 ) -> "MessageType":
     return client.call(
         messages.EthereumSignTypedHash(
             address_n=n,
             domain_separator_hash=domain_hash,
             message_hash=message_hash,
+            encoded_network=encoded_network,
         )
     )

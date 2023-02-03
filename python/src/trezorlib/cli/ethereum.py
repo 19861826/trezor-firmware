@@ -15,12 +15,14 @@
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
 import json
+import pathlib
 import re
 import sys
 from decimal import Decimal
 from typing import (
     TYPE_CHECKING,
     Any,
+    BinaryIO,
     Dict,
     List,
     NoReturn,
@@ -33,6 +35,7 @@ from typing import (
 import click
 
 from .. import ethereum, tools
+from ..tools import UH_
 from . import with_client
 
 if TYPE_CHECKING:
@@ -164,9 +167,94 @@ def _format_access_list(
     ]
 
 
+def _get_ethereum_definitions(
+    definitions_zip: Optional[pathlib.Path] = None,
+    network_def_file: Optional[BinaryIO] = None,
+    token_def_file: Optional[BinaryIO] = None,
+    download_definitions: bool = False,
+    chain_id: Optional[int] = None,
+    slip44_hardened: Optional[int] = None,
+    token_address: Optional[str] = None,
+) -> ethereum.messages.EthereumDefinitions:
+    count_of_options_used = sum(
+        bool(o)
+        for o in (
+            definitions_zip,
+            (network_def_file or token_def_file),
+            download_definitions,
+        )
+    )
+    if count_of_options_used > 1:
+        raise click.ClickException(
+            "More than one mutually exclusive option for definitions was used. See --help for more info."
+        )
+
+    slip44 = None
+    if slip44_hardened is not None:
+        slip44 = UH_(slip44_hardened)
+
+    defs = ethereum.messages.EthereumDefinitions()
+    if definitions_zip is not None:
+        if chain_id is not None or slip44 is not None:
+            defs.encoded_network = ethereum.get_definition_from_zip(
+                definitions_zip,
+                ethereum.get_network_definition_path(chain_id, slip44),
+            )
+        if chain_id is not None and token_address is not None:
+            defs.encoded_token = ethereum.get_definition_from_zip(
+                definitions_zip,
+                ethereum.get_token_definition_path(chain_id, token_address),
+            )
+    elif network_def_file is not None or token_def_file is not None:
+        if network_def_file is not None:
+            with network_def_file:
+                defs.encoded_network = network_def_file.read()
+        if token_def_file is not None:
+            with token_def_file:
+                defs.encoded_token = token_def_file.read()
+    elif download_definitions:
+        if chain_id is not None or slip44 is not None:
+            defs.encoded_network = ethereum.download_from_url(
+                ethereum.get_network_definition_url(chain_id, slip44)
+            )
+        if chain_id is not None and token_address is not None:
+            defs.encoded_network = ethereum.download_from_url(
+                ethereum.get_token_definition_url(chain_id, token_address)
+            )
+
+    return defs
+
+
 #####################
 #
 # commands start here
+
+
+definitions_zip_option = click.option(
+    "--definitions-zip",
+    type=click.Path(
+        exists=True, dir_okay=False, resolve_path=True, path_type=pathlib.Path
+    ),
+    help="Zip file with stored definitions. Zip file could be obtained using command "
+    "`trezorctl ethereum download-definitions`. Mutually exclusive with `--network-def`, `--token-def` "
+    "and `--download-definitions`.",
+)
+network_def_option = click.option(
+    "--network-def",
+    type=click.File(mode="rb"),
+    help="Binary file with network definition. Mutually exclusive with `--definitions-zip` and `--download-definitions`.",
+)
+token_def_options = click.option(
+    "--token-def",
+    type=click.File(mode="rb"),
+    help="Binary file with token definition. Mutually exclusive with `--definitions-zip` and `--download-definitions`.",
+)
+download_definitions_option = click.option(
+    "--download-definitions",
+    is_flag=True,
+    help="Automatically download required definitions from `data.trezor.io/definitions/???` and use them. "
+    "Mutually exclusive with `--definitions-zip`, `--network-def` and `--token-def`.",  # TODO: add link?, replace this ur with function used to download defs
+)
 
 
 @click.group(name="ethereum")
@@ -175,23 +263,72 @@ def cli() -> None:
 
 
 @cli.command()
+@click.option(
+    "-o",
+    "--outfile",
+    type=click.Path(
+        resolve_path=True, dir_okay=False, writable=True, path_type=pathlib.Path
+    ),
+    default=f"./{ethereum.DEFS_ZIP_FILENAME}",
+    help="File path to use to save downloaded definitions. Existing file will be overwritten!",
+)
+def download_definitions(outfile: pathlib.Path) -> None:
+    """Download all Ethereum network and token definitions stored in zip file
+    and save them to `outfile`.
+    """
+
+    # TODO: change once we know the urls
+    archived_definitions = ethereum.download_from_url(
+        ethereum.DEFS_BASE_URL + ethereum.DEFS_ZIP_FILENAME
+    )
+
+    # save
+    with open(outfile, mode="wb+") as f:
+        f.write(archived_definitions)
+
+
+@cli.command()
 @click.option("-n", "--address", required=True, help=PATH_HELP)
 @click.option("-d", "--show-display", is_flag=True)
+@definitions_zip_option
+@network_def_option
+@download_definitions_option
 @with_client
-def get_address(client: "TrezorClient", address: str, show_display: bool) -> str:
+def get_address(
+    client: "TrezorClient",
+    address: str,
+    show_display: bool,
+    definitions_zip: pathlib.Path,
+    network_def: BinaryIO,
+    download_definitions: bool,
+) -> str:
     """Get Ethereum address in hex encoding."""
     address_n = tools.parse_path(address)
-    return ethereum.get_address(client, address_n, show_display)
+    defs = _get_ethereum_definitions(
+        definitions_zip=definitions_zip,
+        network_def_file=network_def,
+        download_definitions=download_definitions,
+        slip44_hardened=address_n[1],
+    )
+    return ethereum.get_address(client, address_n, show_display, defs.encoded_network)
 
 
 @cli.command()
 @click.option("-n", "--address", required=True, help=PATH_HELP)
 @click.option("-d", "--show-display", is_flag=True)
 @with_client
-def get_public_node(client: "TrezorClient", address: str, show_display: bool) -> dict:
+def get_public_node(
+    client: "TrezorClient",
+    address: str,
+    show_display: bool,
+) -> dict:
     """Get Ethereum public node of given path."""
     address_n = tools.parse_path(address)
-    result = ethereum.get_public_node(client, address_n, show_display=show_display)
+    result = ethereum.get_public_node(
+        client,
+        address_n,
+        show_display=show_display,
+    )
     return {
         "node": {
             "depth": result.node.depth,
@@ -249,6 +386,10 @@ def get_public_node(client: "TrezorClient", address: str, show_display: bool) ->
 )
 @click.argument("to_address")
 @click.argument("amount", callback=_amount_to_int)
+@definitions_zip_option
+@network_def_option
+@token_def_options
+@download_definitions_option
 @with_client
 def sign_tx(
     client: "TrezorClient",
@@ -267,6 +408,10 @@ def sign_tx(
     max_priority_fee: Optional[int],
     access_list: List[ethereum.messages.EthereumAccessList],
     eip2718_type: Optional[int],
+    definitions_zip: pathlib.Path,
+    network_def: BinaryIO,
+    token_def: BinaryIO,
+    download_definitions: bool,
 ) -> str:
     """Sign (and optionally publish) Ethereum transaction.
 
@@ -306,13 +451,33 @@ def sign_tx(
         click.echo("Can't send tokens and custom data at the same time")
         sys.exit(1)
 
+    defs = _get_ethereum_definitions(
+        definitions_zip=definitions_zip,
+        network_def_file=network_def,
+        token_def_file=token_def,
+        download_definitions=download_definitions,
+        chain_id=chain_id,
+        token_address=to_address,
+    )
+
     address_n = tools.parse_path(address)
-    from_address = ethereum.get_address(client, address_n)
+    from_address = ethereum.get_address(
+        client, address_n, encoded_network=defs.encoded_network
+    )
 
     if token:
         data = _erc20_contract(token, to_address, amount)
         to_address = token
         amount = 0
+        # to_address has changed, reload definitions
+        defs = _get_ethereum_definitions(
+            definitions_zip=definitions_zip,
+            network_def_file=network_def,
+            token_def_file=token_def,
+            download_definitions=download_definitions,
+            chain_id=chain_id,
+            token_address=to_address,
+        )
 
     if data:
         data_bytes = ethereum.decode_hex(data)
@@ -350,6 +515,7 @@ def sign_tx(
             max_gas_fee=max_gas_fee,
             max_priority_fee=max_priority_fee,
             access_list=access_list,
+            definitions=defs,
         )
     else:
         if gas_price is None:
@@ -366,6 +532,7 @@ def sign_tx(
             value=amount,
             data=data_bytes,
             chain_id=chain_id,
+            definitions=defs,
         )
 
     to = ethereum.decode_hex(to_address)
@@ -416,11 +583,27 @@ def sign_tx(
 @cli.command()
 @click.option("-n", "--address", required=True, help=PATH_HELP)
 @click.argument("message")
+@definitions_zip_option
+@network_def_option
+@download_definitions_option
 @with_client
-def sign_message(client: "TrezorClient", address: str, message: str) -> Dict[str, str]:
+def sign_message(
+    client: "TrezorClient",
+    address: str,
+    message: str,
+    definitions_zip: pathlib.Path,
+    network_def: BinaryIO,
+    download_definitions: bool,
+) -> Dict[str, str]:
     """Sign message with Ethereum address."""
     address_n = tools.parse_path(address)
-    ret = ethereum.sign_message(client, address_n, message)
+    defs = _get_ethereum_definitions(
+        definitions_zip=definitions_zip,
+        network_def_file=network_def,
+        download_definitions=download_definitions,
+        slip44_hardened=address_n[1],
+    )
+    ret = ethereum.sign_message(client, address_n, message, defs.encoded_network)
     output = {
         "message": message,
         "address": ret.address,
@@ -437,9 +620,20 @@ def sign_message(client: "TrezorClient", address: str, message: str) -> Dict[str
     help="Be compatible with Metamask's signTypedData_v4 implementation",
 )
 @click.argument("file", type=click.File("r"))
+@definitions_zip_option
+@network_def_option
+@token_def_options
+@download_definitions_option
 @with_client
 def sign_typed_data(
-    client: "TrezorClient", address: str, metamask_v4_compat: bool, file: TextIO
+    client: "TrezorClient",
+    address: str,
+    metamask_v4_compat: bool,
+    file: TextIO,
+    definitions_zip: pathlib.Path,
+    network_def: BinaryIO,
+    token_def: BinaryIO,
+    download_definitions: bool,
 ) -> Dict[str, str]:
     """Sign typed data (EIP-712) with Ethereum address.
 
@@ -449,8 +643,19 @@ def sign_typed_data(
     """
     address_n = tools.parse_path(address)
     data = json.loads(file.read())
+    defs = _get_ethereum_definitions(
+        definitions_zip=definitions_zip,
+        network_def_file=network_def,
+        token_def_file=token_def,
+        download_definitions=download_definitions,
+        slip44_hardened=address_n[1],
+    )
     ret = ethereum.sign_typed_data(
-        client, address_n, data, metamask_v4_compat=metamask_v4_compat
+        client,
+        address_n,
+        data,
+        metamask_v4_compat=metamask_v4_compat,
+        definitions=defs,
     )
     output = {
         "address": ret.address,
@@ -465,7 +670,10 @@ def sign_typed_data(
 @click.argument("message")
 @with_client
 def verify_message(
-    client: "TrezorClient", address: str, signature: str, message: str
+    client: "TrezorClient",
+    address: str,
+    signature: str,
+    message: str,
 ) -> bool:
     """Verify message signed with Ethereum address."""
     signature_bytes = ethereum.decode_hex(signature)
@@ -476,9 +684,18 @@ def verify_message(
 @click.option("-n", "--address", required=True, help=PATH_HELP)
 @click.argument("domain_hash_hex")
 @click.argument("message_hash_hex")
+@definitions_zip_option
+@network_def_option
+@download_definitions_option
 @with_client
 def sign_typed_data_hash(
-    client: "TrezorClient", address: str, domain_hash_hex: str, message_hash_hex: str
+    client: "TrezorClient",
+    address: str,
+    domain_hash_hex: str,
+    message_hash_hex: str,
+    definitions_zip: pathlib.Path,
+    network_def: BinaryIO,
+    download_definitions: bool,
 ) -> Dict[str, str]:
     """
     Sign hash of typed data (EIP-712) with Ethereum address.
@@ -490,7 +707,15 @@ def sign_typed_data_hash(
     address_n = tools.parse_path(address)
     domain_hash = ethereum.decode_hex(domain_hash_hex)
     message_hash = ethereum.decode_hex(message_hash_hex) if message_hash_hex else None
-    ret = ethereum.sign_typed_data_hash(client, address_n, domain_hash, message_hash)
+    defs = _get_ethereum_definitions(
+        definitions_zip=definitions_zip,
+        network_def_file=network_def,
+        download_definitions=download_definitions,
+        slip44_hardened=address_n[1],
+    )
+    ret = ethereum.sign_typed_data_hash(
+        client, address_n, domain_hash, message_hash, defs.encoded_network
+    )
     output = {
         "domain_hash": domain_hash_hex,
         "message_hash": message_hash_hex,
