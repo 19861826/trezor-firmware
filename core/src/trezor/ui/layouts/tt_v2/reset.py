@@ -9,7 +9,7 @@ from ..common import interact
 from . import RustLayout
 
 if TYPE_CHECKING:
-    from typing import Callable, Sequence, List
+    from typing import Callable, Sequence
     from trezor.enums import BackupType
     from trezor.wire import GenericContext
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 CONFIRMED = trezorui2.CONFIRMED  # global_import_cache
 
 
-def _split_share_into_pages(share_words: Sequence[str], per_page: int = 4) -> List[str]:
+def _split_share_into_pages(share_words: Sequence[str], per_page: int = 4) -> list[str]:
     pages = []
     current = ""
 

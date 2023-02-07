@@ -154,7 +154,6 @@ class RustLayout(ui.Layout):
 
         touch = loop.wait(io.TOUCH)
         self._first_paint()
-        # self.layout.bounds()
         while True:
             # Using `yield` instead of `await` to avoid allocations.
             event, x, y = yield touch
@@ -165,7 +164,6 @@ class RustLayout(ui.Layout):
             if msg is not None:
                 raise ui.Result(msg)
             self._paint()
-            # self.layout.bounds()
 
     def handle_timers(self) -> loop.Task:  # type: ignore [awaitable-is-generator]
         while True:
@@ -349,7 +347,7 @@ async def confirm_homescreen(
 
 
 def _show_xpub(xpub: str, title: str, cancel: str | None) -> ui.Layout:
-    content = RustLayout(
+    return RustLayout(
         trezorui2.confirm_blob(
             title=title,
             data=xpub,
@@ -358,7 +356,6 @@ def _show_xpub(xpub: str, title: str, cancel: str | None) -> ui.Layout:
             description=None,
         )
     )
-    return content
 
 
 async def show_xpub(ctx: GenericContext, xpub: str, title: str) -> None:
@@ -779,7 +776,7 @@ def confirm_value(
     value: str,
     description: str,
     br_type: str,
-    br_code: ButtonRequestType = ButtonRequestType.Other,
+    br_code: ButtonRequestType = BR_TYPE_OTHER,
     *,
     verb: str | None = None,
     hold: bool = False,
@@ -1004,7 +1001,7 @@ async def confirm_coinjoin(
                 )
             ),
             "coinjoin_final",
-            ButtonRequestType.Other,
+            BR_TYPE_OTHER,
         )
     )
 
@@ -1019,7 +1016,7 @@ async def confirm_sign_identity(
         data=identity,
         description=challenge_visual + "\n" if challenge_visual else "",
         br_type="sign_identity",
-        br_code=ButtonRequestType.Other,
+        br_code=BR_TYPE_OTHER,
     )
 
 
@@ -1039,7 +1036,7 @@ async def confirm_signverify(
         title,
         address,
         "Confirm address:",
-        br_code=ButtonRequestType.Other,
+        br_code=BR_TYPE_OTHER,
     )
 
     await confirm_blob(
@@ -1048,7 +1045,7 @@ async def confirm_signverify(
         title,
         message,
         "Confirm message:",
-        br_code=ButtonRequestType.Other,
+        br_code=BR_TYPE_OTHER,
     )
 
 
@@ -1122,9 +1119,8 @@ async def request_pin_on_device(
             wrong_pin=wrong_pin,
         )
     )
-    while True:
-        result = await ctx.wait(dialog)
-        if result is CANCELLED:
-            raise PinCancelled
-        assert isinstance(result, str)
-        return result
+    result = await ctx.wait(dialog)
+    if result is CANCELLED:
+        raise PinCancelled
+    assert isinstance(result, str)
+    return result
