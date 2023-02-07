@@ -325,7 +325,7 @@ impl LayoutSink for TextRenderer {
     }
 
     fn hyphen(&mut self, cursor: Point, layout: &TextLayout) {
-        display::text(
+        display::text_left(
             cursor,
             "-",
             layout.style.text_font,

@@ -781,7 +781,8 @@ pub fn qrcode(center: Point, data: &str, max_size: u32, case_sensitive: bool) ->
     qr::render_qrcode(center.x, center.y, data, max_size, case_sensitive)
 }
 
-pub fn text(baseline: Point, text: &str, font: Font, fg_color: Color, bg_color: Color) {
+/// Display text left-alligned to a certain Point
+pub fn text_left(baseline: Point, text: &str, font: Font, fg_color: Color, bg_color: Color) {
     display::text(
         baseline.x,
         baseline.y,
@@ -792,6 +793,7 @@ pub fn text(baseline: Point, text: &str, font: Font, fg_color: Color, bg_color: 
     );
 }
 
+/// Display text centered around a certain Point
 pub fn text_center(baseline: Point, text: &str, font: Font, fg_color: Color, bg_color: Color) {
     let w = font.text_width(text);
     display::text(
@@ -804,6 +806,7 @@ pub fn text_center(baseline: Point, text: &str, font: Font, fg_color: Color, bg_
     );
 }
 
+/// Display text right-alligned to a certain Point
 pub fn text_right(baseline: Point, text: &str, font: Font, fg_color: Color, bg_color: Color) {
     let w = font.text_width(text);
     display::text(
