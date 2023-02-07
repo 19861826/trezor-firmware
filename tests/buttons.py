@@ -54,31 +54,32 @@ def _grid34_from_index(idx: int) -> Tuple[int, int]:
 
 def type_word(word: str, is_slip39: bool = False) -> Iterator[Tuple[int, int]]:
     if is_slip39:
-        yield from type_word_slip39(word)
+        yield from _type_word_slip39(word)
     else:
-        yield from type_word_bip39(word)
+        yield from _type_word_bip39(word)
 
 
-def type_word_slip39(word: str) -> Iterator[Tuple[int, int]]:
+def _type_word_slip39(word: str) -> Iterator[Tuple[int, int]]:
     for l in word:
         idx = next(i for i, letters in enumerate(BUTTON_LETTERS_SLIP39) if l in letters)
         yield _grid34_from_index(idx)
 
 
-def type_word_bip39(word: str) -> Iterator[Tuple[int, int]]:
+def _type_word_bip39(word: str) -> Iterator[Tuple[int, int]]:
     coords_prev: Tuple[int, int] | None = None
     for letter in word:
-        coords, amount = letter_coords_and_amount(letter)
+        time.sleep(0.1)  # not being so quick to miss something
+        coords, amount = _letter_coords_and_amount(letter)
         # If the button is the same as for the previous letter,
         # waiting a second before pressing it again.
         if coords == coords_prev:
-            time.sleep(1)
+            time.sleep(1.1)
         coords_prev = coords
         for _ in range(amount):
             yield coords
 
 
-def letter_coords_and_amount(letter: str) -> Tuple[Tuple[int, int], int]:
+def _letter_coords_and_amount(letter: str) -> Tuple[Tuple[int, int], int]:
     idx = next(i for i, letters in enumerate(BUTTON_LETTERS_BIP39) if letter in letters)
     click_amount = BUTTON_LETTERS_BIP39[idx].index(letter) + 1
     return _grid34_from_index(idx), click_amount
