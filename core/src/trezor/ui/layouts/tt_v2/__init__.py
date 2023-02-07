@@ -245,19 +245,16 @@ async def confirm_action(
 
 
 async def confirm_reset_device(
-    ctx: GenericContext, prompt: str, recovery: bool = False
+    ctx: GenericContext,
+    prompt: str,
+    recovery: bool = False,
 ) -> None:
-    if recovery:
-        title = "RECOVERY MODE"
-    else:
-        title = "CREATE NEW WALLET"
-
     await raise_if_not_confirmed(
         interact(
             ctx,
             RustLayout(
                 trezorui2.confirm_reset_device(
-                    title=title.upper(),
+                    recovery=recovery,
                     prompt=prompt,
                 )
             ),

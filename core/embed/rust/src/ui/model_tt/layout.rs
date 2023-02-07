@@ -501,10 +501,16 @@ extern "C" fn new_confirm_homescreen(n_args: usize, args: *const Obj, kwargs: *m
 
 extern "C" fn new_confirm_reset_device(n_args: usize, args: *const Obj, kwargs: *mut Map) -> Obj {
     let block = move |_args: &[Obj], kwargs: &Map| {
-        let title: StrBuffer = kwargs.get(Qstr::MP_QSTR_title)?.try_into()?;
+        let recovery: bool = kwargs.get(Qstr::MP_QSTR_recovery)?.try_into()?;
         let prompt: StrBuffer = kwargs.get(Qstr::MP_QSTR_prompt)?.try_into()?;
         let description: StrBuffer = "\nBy continuing you agree to".into();
         let url: StrBuffer = "https://trezor.io/tos".into();
+
+        let title: StrBuffer = if recovery {
+            "RECOVERY MODE".into()
+        } else {
+            "CREATE NEW WALLET".into()
+        };
 
         let paragraphs = Paragraphs::new([
             Paragraph::new(&theme::TEXT_BOLD, prompt),
@@ -1398,7 +1404,7 @@ pub static mp_module_trezorui2: Module = obj_module! {
 
     /// def confirm_reset_device(
     ///     *,
-    ///     title: str,
+    ///     recovery: bool,
     ///     prompt: str,
     /// ) -> object:
     ///     """Confirm TOS before device setup."""
