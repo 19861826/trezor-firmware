@@ -1349,7 +1349,7 @@ pub static mp_module_trezorui2: Module = obj_module! {
     ///     title: str,
     ///     action: str | None,
     ///     description: str | None,
-    ///     verb: str | None = None,
+    ///     verb: str = "CONFIRM",
     ///     verb_cancel: str | None = None,
     ///     hold: bool = False,
     ///     hold_danger: bool = False,
@@ -1610,7 +1610,7 @@ pub static mp_module_trezorui2: Module = obj_module! {
     ///     button: str,
     /// ) -> object:
     ///    """Checklist of backup steps. Active index is highlighted, previous items have check
-    ///    mark nex to them."""
+    ///    mark next to them."""
     Qstr::MP_QSTR_show_checklist => obj_fn_kw!(0, new_show_checklist).as_obj(),
 
     /// def confirm_recovery(
@@ -1627,7 +1627,7 @@ pub static mp_module_trezorui2: Module = obj_module! {
     /// def select_word_count(
     ///     *,
     ///     dry_run: bool,
-    /// ) -> int | CANCELLED:
+    /// ) -> int | str:  # TT returns int
     ///    """Select mnemonic word count from (12, 18, 20, 24, 33)."""
     Qstr::MP_QSTR_select_word_count => obj_fn_kw!(0, new_select_word_count).as_obj(),
 
@@ -1653,7 +1653,7 @@ pub static mp_module_trezorui2: Module = obj_module! {
     /// ) -> object:
     ///    """Show progress loader. Please note that the number of lines reserved on screen for
     ///    description is determined at construction time. If you want multiline descriptions
-    ///    make sure the initial desciption has at least that amount of lines."""
+    ///    make sure the initial description has at least that amount of lines."""
     Qstr::MP_QSTR_show_progress => obj_fn_kw!(0, new_show_progress).as_obj(),
 
     /// def show_homescreen(
