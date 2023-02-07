@@ -8,7 +8,6 @@ use crate::{
             base::Component,
             paginated::{PageMsg, Paginate},
             text::paragraphs::{Paragraph, Paragraphs},
-            FormattedText,
         },
         layout::{
             obj::{ComponentMsgObj, LayoutObj},
@@ -19,7 +18,7 @@ use crate::{
 };
 
 use super::{
-    component::{Button, ButtonPage, ButtonPos, Frame},
+    component::{ButtonPage, Frame},
     theme,
 };
 
@@ -53,30 +52,18 @@ extern "C" fn new_confirm_action(n_args: usize, args: *const Obj, kwargs: *mut M
         let action: Option<StrBuffer> = kwargs.get(Qstr::MP_QSTR_action)?.try_into_option()?;
         let description: Option<StrBuffer> =
             kwargs.get(Qstr::MP_QSTR_description)?.try_into_option()?;
-        let verb: Option<StrBuffer> = kwargs.get(Qstr::MP_QSTR_verb)?.try_into_option()?;
-        let verb_cancel: Option<StrBuffer> =
+        let _verb: Option<StrBuffer> = kwargs.get(Qstr::MP_QSTR_verb)?.try_into_option()?;
+        let _verb_cancel: Option<StrBuffer> =
             kwargs.get(Qstr::MP_QSTR_verb_cancel)?.try_into_option()?;
-        let reverse: bool = kwargs.get(Qstr::MP_QSTR_reverse)?.try_into()?;
-
-        let format = match (&action, &description, reverse) {
-            (Some(_), Some(_), false) => "{bold}{action}\n\r{normal}{description}",
-            (Some(_), Some(_), true) => "{normal}{description}\n\r{bold}{action}",
-            (Some(_), None, _) => "{bold}{action}",
-            (None, Some(_), _) => "{normal}{description}",
-            _ => "",
-        };
-
-        let _left = verb_cancel
-            .map(|label| Button::with_text(ButtonPos::Left, label, theme::button_cancel()));
-        let _right =
-            verb.map(|label| Button::with_text(ButtonPos::Right, label, theme::button_default()));
+        let _reverse: bool = kwargs.get(Qstr::MP_QSTR_reverse)?.try_into()?;
 
         let obj = LayoutObj::new(Frame::new(
             title,
             ButtonPage::new(
-                FormattedText::new(theme::TEXT_NORMAL, theme::FORMATTED, format)
-                    .with("action", action.unwrap_or_default())
-                    .with("description", description.unwrap_or_default()),
+                Paragraphs::new([
+                    Paragraph::new(&theme::TEXT_NORMAL, description.unwrap_or_default()),
+                    Paragraph::new(&theme::TEXT_BOLD, action.unwrap_or_default()),
+                ]),
                 theme::BG,
             ),
         ))?;
@@ -144,102 +131,3 @@ pub static mp_module_trezorui2: Module = obj_module! {
     ///     """Confirm text."""
     Qstr::MP_QSTR_confirm_text => obj_fn_kw!(0, new_confirm_text).as_obj(),
 };
-
-#[cfg(test)]
-mod tests {
-    use crate::{
-        trace::Trace,
-        ui::{
-            component::Component,
-            model_tr::{
-                component::{Dialog, DialogMsg},
-                constant,
-            },
-        },
-    };
-
-    use super::*;
-
-    fn trace(val: &impl Trace) -> String {
-        let mut t = Vec::new();
-        val.trace(&mut t);
-        String::from_utf8(t).unwrap()
-    }
-
-    impl<T, U> ComponentMsgObj for Dialog<T, U>
-    where
-        T: ComponentMsgObj,
-        U: AsRef<str>,
-    {
-        fn msg_try_into_obj(&self, msg: Self::Msg) -> Result<Obj, Error> {
-            match msg {
-                DialogMsg::Content(c) => self.inner().msg_try_into_obj(c),
-                DialogMsg::LeftClicked => Ok(CANCELLED.as_obj()),
-                DialogMsg::RightClicked => Ok(CONFIRMED.as_obj()),
-            }
-        }
-    }
-
-    #[test]
-    fn trace_example_layout() {
-        let mut layout = Dialog::new(
-            FormattedText::new(
-                theme::TEXT_NORMAL,
-                theme::FORMATTED,
-                "Testing text layout, with some text, and some more text. And {param}",
-            )
-            .with("param", "parameters!"),
-            Some(Button::with_text(
-                ButtonPos::Left,
-                "Left",
-                theme::button_cancel(),
-            )),
-            Some(Button::with_text(
-                ButtonPos::Right,
-                "Right",
-                theme::button_default(),
-            )),
-        );
-        layout.place(constant::screen());
-        assert_eq!(
-            trace(&layout),
-            r#"<Dialog content:<Text content:Testing text layout,
-with some text, and
-some more text. And p-
-arameters! > left:<Button text:Left > right:<Button text:Right > >"#
-        )
-    }
-
-    #[test]
-    fn trace_layout_title() {
-        let mut layout = Frame::new(
-            "Please confirm",
-            Dialog::new(
-                FormattedText::new(
-                    theme::TEXT_NORMAL,
-                    theme::FORMATTED,
-                    "Testing text layout, with some text, and some more text. And {param}",
-                )
-                .with("param", "parameters!"),
-                Some(Button::with_text(
-                    ButtonPos::Left,
-                    "Left",
-                    theme::button_cancel(),
-                )),
-                Some(Button::with_text(
-                    ButtonPos::Right,
-                    "Right",
-                    theme::button_default(),
-                )),
-            ),
-        );
-        layout.place(constant::screen());
-        assert_eq!(
-            trace(&layout),
-            r#"<Frame title:Please confirm content:<Dialog content:<Text content:Testing text layout,
-with some text, and
-some more text. And p-
-arameters! > left:<Button text:Left > right:<Button text:Right > > >"#
-        )
-    }
-}

@@ -47,9 +47,9 @@ pub struct TextLayout {
 
 #[derive(Copy, Clone)]
 pub struct TextStyle {
-    /// Text font ID. Can be overridden by `Op::Font`.
+    /// Text font ID.
     pub text_font: Font,
-    /// Text color. Can be overridden by `Op::Color`.
+    /// Text color.
     pub text_color: Color,
     /// Background color.
     pub background_color: Color,
@@ -128,49 +128,6 @@ impl TextLayout {
 
     pub fn render_text(&self, text: &str) {
         self.layout_text(text, &mut self.initial_cursor(), &mut TextRenderer);
-    }
-
-    pub fn layout_ops<'o>(
-        mut self,
-        ops: &mut dyn Iterator<Item = Op<'o>>,
-        cursor: &mut Point,
-        sink: &mut dyn LayoutSink,
-    ) -> LayoutFit {
-        let init_cursor = *cursor;
-        let mut total_processed_chars = 0;
-
-        for op in ops {
-            match op {
-                Op::Color(color) => {
-                    self.style.text_color = color;
-                }
-                Op::Font(font) => {
-                    self.style.text_font = font;
-                }
-                Op::Text(text) => match self.layout_text(text, cursor, sink) {
-                    LayoutFit::Fitting {
-                        processed_chars, ..
-                    } => {
-                        total_processed_chars += processed_chars;
-                    }
-                    LayoutFit::OutOfBounds {
-                        processed_chars, ..
-                    } => {
-                        total_processed_chars += processed_chars;
-
-                        return LayoutFit::OutOfBounds {
-                            processed_chars: total_processed_chars,
-                            height: self.layout_height(init_cursor, *cursor),
-                        };
-                    }
-                },
-            }
-        }
-
-        LayoutFit::Fitting {
-            processed_chars: total_processed_chars,
-            height: self.layout_height(init_cursor, *cursor),
-        }
     }
 
     pub fn layout_text(
@@ -369,38 +326,6 @@ pub mod trace {
         fn line_break(&mut self, _cursor: Point) {
             self.0.string("\n");
         }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Op<'a> {
-    /// Render text with current color and font.
-    Text(&'a str),
-    /// Set current text color.
-    Color(Color),
-    /// Set currently used font.
-    Font(Font),
-}
-
-impl<'a> Op<'a> {
-    pub fn skip_n_text_bytes(
-        ops: impl Iterator<Item = Op<'a>>,
-        skip_bytes: usize,
-    ) -> impl Iterator<Item = Op<'a>> {
-        let mut skipped = 0;
-
-        ops.filter_map(move |op| match op {
-            Op::Text(text) if skipped < skip_bytes => {
-                skipped = skipped.saturating_add(text.len());
-                if skipped > skip_bytes {
-                    let leave_bytes = skipped - skip_bytes;
-                    Some(Op::Text(&text[text.len() - leave_bytes..]))
-                } else {
-                    None
-                }
-            }
-            op_to_pass_through => Some(op_to_pass_through),
-        })
     }
 }
 
