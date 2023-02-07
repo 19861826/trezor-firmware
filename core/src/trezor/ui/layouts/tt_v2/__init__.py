@@ -971,7 +971,6 @@ async def confirm_modify_fee(
     total_fee_new: str,
     fee_rate_amount: str | None = None,
 ) -> None:
-    # TODO: include fee_rate_amount
     await raise_if_not_confirmed(
         interact(
             ctx,
@@ -980,6 +979,7 @@ async def confirm_modify_fee(
                     sign=sign,
                     user_fee_change=user_fee_change,
                     total_fee_new=total_fee_new,
+                    fee_rate_amount=fee_rate_amount,
                 )
             ),
             "modify_fee",
