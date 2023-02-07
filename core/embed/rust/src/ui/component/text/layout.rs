@@ -122,18 +122,23 @@ impl TextLayout {
         self
     }
 
+    /// Baseline `Point` where we are starting to draw the text.
     pub fn initial_cursor(&self) -> Point {
         self.bounds.top_left() + Offset::y(self.style.text_font.text_height() + self.padding_top)
     }
 
-    pub fn fit_text(&self, text: &str) -> LayoutFit {
-        self.layout_text(text, &mut self.initial_cursor(), &mut TextNoOp)
+    /// Trying to fit the content on the current screen.
     }
 
-    pub fn render_text(&self, text: &str) {
-        self.layout_text(text, &mut self.initial_cursor(), &mut TextRenderer);
+    /// Draw as much text as possible on the current screen.
+    /// Y coordinate of the bottom of the available space/bounds
+    pub fn bottom_y(&self) -> i16 {
+        (self.bounds.y1 - self.padding_bottom).max(self.bounds.y0)
     }
 
+    /// Loop through the `text` and try to fit it on the current screen,
+    /// reporting events to `sink`, which may do something with them (e.g. draw
+    /// on screen).
     pub fn layout_text(
         &self,
         text: &str,
@@ -141,11 +146,10 @@ impl TextLayout {
         sink: &mut dyn LayoutSink,
     ) -> LayoutFit {
         let init_cursor = *cursor;
-        let bottom = (self.bounds.y1 - self.padding_bottom).max(self.bounds.y0);
         let mut remaining_text = text;
 
         // Check if bounding box is high enough for at least one line.
-        if cursor.y > bottom {
+        if cursor.y > self.bottom_y() {
             sink.out_of_bounds();
             return LayoutFit::OutOfBounds {
                 processed_chars: 0,
@@ -169,7 +173,13 @@ impl TextLayout {
             };
 
             // Report the span at the cursor position.
-            sink.text(*cursor, self, &remaining_text[..span.length]);
+            // Not doing it when the span length is 0, as that
+            // means we encountered a newline/line-break, which we do not draw.
+            // Line-breaks are reported later.
+            let text_to_display = &remaining_text[..span.length];
+            if span.length > 0 {
+                sink.text(*cursor, self, text_to_display);
+            }
 
             // Continue with the rest of the remaining_text.
             remaining_text = &remaining_text[span.length + span.skip_next_chars..];
@@ -185,7 +195,8 @@ impl TextLayout {
                     sink.hyphen(*cursor, self);
                 }
                 // Check the amount of vertical space we have left.
-                if cursor.y + span.advance.y > bottom {
+                if cursor.y + span.advance.y > self.bottom_y() {
+                    // Not enough space on this page.
                     if !remaining_text.is_empty() {
                         // Append ellipsis to indicate more content is available, but only if we
                         // haven't already appended a hyphen.
@@ -225,6 +236,7 @@ impl TextLayout {
         }
     }
 
+    /// Overall height of the content, including paddings.
     fn layout_height(&self, init_cursor: Point, end_cursor: Point) -> i16 {
         self.padding_top
             + self.style.text_font.text_height()
@@ -243,6 +255,8 @@ impl Dimensions for TextLayout {
     }
 }
 
+/// Whether we can fit content on the current screen.
+/// Knows how many characters got processed and how high the content is.
 pub enum LayoutFit {
     /// Entire content fits. Vertical size is returned in `height`.
     Fitting { processed_chars: usize, height: i16 },
@@ -251,6 +265,7 @@ pub enum LayoutFit {
 }
 
 impl LayoutFit {
+    /// How high is the processed/fitted content.
     pub fn height(&self) -> i16 {
         match self {
             LayoutFit::Fitting { height, .. } => *height,
@@ -260,18 +275,29 @@ impl LayoutFit {
 }
 
 /// Visitor for text segment operations.
+/// Defines responses for certain kind of events encountered
+/// when processing the content.
 pub trait LayoutSink {
+    /// Text should be processed.
     fn text(&mut self, _cursor: Point, _layout: &TextLayout, _text: &str) {}
+    /// Hyphen at the end of line.
     fn hyphen(&mut self, _cursor: Point, _layout: &TextLayout) {}
+    /// Ellipsis at the end of the page.
     fn ellipsis(&mut self, _cursor: Point, _layout: &TextLayout) {}
+    /// Line break - a newline.
     fn line_break(&mut self, _cursor: Point) {}
+    /// Content cannot fit on the screen.
     fn out_of_bounds(&mut self) {}
 }
 
+/// `LayoutSink` without any functionality.
+/// Used to consume events when counting pages
+/// or navigating to a certain page number.
 pub struct TextNoOp;
 
 impl LayoutSink for TextNoOp {}
 
+/// `LayoutSink` for rendering the content.
 pub struct TextRenderer;
 
 impl LayoutSink for TextRenderer {
@@ -340,6 +366,7 @@ pub mod trace {
 
     use super::*;
 
+    /// `LayoutSink` for debugging purposes.
     pub struct TraceSink<'a>(pub &'a mut dyn crate::trace::Tracer);
 
     impl<'a> LayoutSink for TraceSink<'a> {
@@ -360,6 +387,9 @@ pub mod trace {
         }
     }
 }
+
+/// Carries info about the content that was processed
+/// on the current line.
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Span {
@@ -437,7 +467,7 @@ impl Span {
                 }
                 found_any_whitespace = true;
             } else if span_width + char_width > max_width {
-                // Return the last breakpoint.
+                // Cannot fit on this line. Return the last breakpoint.
                 return line;
             } else {
                 let have_space_for_break = span_width + char_width + hyphen_width <= max_width;
@@ -458,7 +488,7 @@ impl Span {
             span_width += char_width;
         }
 
-        // The whole text is fitting.
+        // The whole text is fitting on the current line.
         Self {
             length: text.len(),
             advance: Offset::x(span_width),
