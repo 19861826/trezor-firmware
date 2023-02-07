@@ -13,7 +13,7 @@ keepalive_callback: Any = None
 
 def render_empty_loader(message: str, description: str) -> None:
     """Render empty loader to prevent the screen appear to be frozen."""
-    from trezor.ui.layouts import pin_progress
+    from trezor.ui.layouts.progress import pin_progress
 
     global _progress_layout
     global _started_with_empty_loader
@@ -25,7 +25,7 @@ def render_empty_loader(message: str, description: str) -> None:
 
 
 def show_pin_timeout(seconds: int, progress: int, message: str) -> bool:
-    from trezor.ui.layouts import pin_progress
+    from trezor.ui.layouts.progress import pin_progress
 
     global _previous_seconds
     global _previous_remaining
