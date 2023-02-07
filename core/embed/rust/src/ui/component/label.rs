@@ -73,7 +73,7 @@ where
     }
 
     fn paint(&mut self) {
-        self.layout.render_text(self.text.as_ref());
+        self.layout.render_text(self.text.as_ref(), false);
     }
 
     fn bounds(&self, sink: &mut dyn FnMut(Rect)) {

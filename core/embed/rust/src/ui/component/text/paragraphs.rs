@@ -146,7 +146,7 @@ where
         source: &'a dyn ParagraphSource<StrType = S>,
         visible: &'a [TextLayout],
         offset: PageOffset,
-        func: &'b mut dyn FnMut(&TextLayout, &str),
+        func: &'b mut dyn FnMut(&TextLayout, &str, bool),
     ) {
         let mut vis_iter = visible.iter();
         let mut chr = offset.chr;
@@ -158,7 +158,8 @@ where
                 continue;
             }
             if let Some(layout) = vis_iter.next() {
-                func(layout, s.as_ref());
+                let continues_from_prev_page = chr > 0;
+                func(layout, s.as_ref(), continues_from_prev_page);
             } else {
                 break;
             }
@@ -188,8 +189,8 @@ where
             &self.source,
             &self.visible,
             self.offset,
-            &mut |layout, content| {
-                layout.render_text(content);
+            &mut |layout, content, continues| {
+                layout.render_text(content, continues);
             },
         )
     }
@@ -231,15 +232,22 @@ pub mod trace {
     impl<T: ParagraphSource> crate::trace::Trace for Paragraphs<T> {
         fn trace(&self, t: &mut dyn crate::trace::Tracer) {
             t.open("Paragraphs");
+            t.content_flag();
             Self::foreach_visible(
                 &self.source,
                 &self.visible,
                 self.offset,
-                &mut |layout, content| {
-                    layout.layout_text(content, &mut layout.initial_cursor(), &mut TraceSink(t));
+                &mut |layout, content, continues| {
+                    layout.layout_text(
+                        content,
+                        &mut layout.initial_cursor(),
+                        &mut TraceSink(t),
+                        continues,
+                    );
                     t.string("\n");
                 },
             );
+            t.content_flag();
             t.close();
         }
     }
@@ -369,7 +377,7 @@ impl PageOffset {
 
         // Find out the dimensions of the paragraph at given char offset.
         let mut layout = paragraph.layout(area);
-        let fit = layout.fit_text(paragraph.content.as_ref());
+        let fit = layout.fit_text(paragraph.content.as_ref(), self.chr > 0);
         let (used, remaining_area) = area.split_top(fit.height());
         layout.bounds = used;
 
@@ -414,11 +422,11 @@ impl PageOffset {
         let full_area = area.with_height(full_height);
         let key_height = this_paragraph
             .layout(full_area)
-            .fit_text(this_paragraph.content.as_ref())
+            .fit_text(this_paragraph.content.as_ref(), false)
             .height();
         let val_height = next_paragraph
             .layout(full_area)
-            .fit_text(next_paragraph.content.as_ref())
+            .fit_text(next_paragraph.content.as_ref(), false)
             .height();
         let screen_full_threshold = this_paragraph.style.text_font.line_height()
             + next_paragraph.style.text_font.line_height();
