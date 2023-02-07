@@ -28,7 +28,11 @@ async def change_pin(ctx: Context, msg: ChangePin) -> Success:
     await _require_confirm_change_pin(ctx, msg)
 
     # get old pin
-    curpin, salt = await request_pin_and_sd_salt(ctx, "Enter old PIN")
+    if msg.remove:
+        prompt = "Enter PIN"
+    else:
+        prompt = "Enter old PIN"
+    curpin, salt = await request_pin_and_sd_salt(ctx, prompt)
 
     # if changing pin, pre-check the entered pin before getting new pin
     if curpin and not msg.remove:
@@ -50,13 +54,13 @@ async def change_pin(ctx: Context, msg: ChangePin) -> Success:
 
     if newpin:
         if curpin:
-            msg_screen = "You have successfully changed your PIN."
+            msg_screen = "PIN changed."
             msg_wire = "PIN changed"
         else:
-            msg_screen = "You have successfully enabled PIN protection."
+            msg_screen = "PIN protection enabled."
             msg_wire = "PIN enabled"
     else:
-        msg_screen = "You have successfully disabled PIN protection."
+        msg_screen = "PIN protection disabled."
         msg_wire = "PIN removed"
 
     await show_success(ctx, "success_pin", msg_screen)
@@ -64,38 +68,39 @@ async def change_pin(ctx: Context, msg: ChangePin) -> Success:
 
 
 def _require_confirm_change_pin(ctx: Context, msg: ChangePin) -> Awaitable[None]:
-    from trezor.ui.layouts import confirm_action
+    from trezor.ui.layouts import confirm_pin_action, confirm_set_new_pin
 
     has_pin = config.has_pin()
 
+    title = "PIN settings"
+    br_code = "set_pin"
+
     if msg.remove and has_pin:  # removing pin
-        return confirm_action(
+        return confirm_pin_action(
             ctx,
-            "set_pin",
-            "Remove PIN",
+            br_code,
+            title,
             "disable PIN protection?",
-            "Do you really want to",
-            reverse=True,
         )
 
     if not msg.remove and has_pin:  # changing pin
-        return confirm_action(
+        return confirm_pin_action(
             ctx,
-            "set_pin",
-            "Change PIN",
+            br_code,
+            title,
             "change your PIN?",
-            "Do you really want to",
-            reverse=True,
         )
 
     if not msg.remove and not has_pin:  # setting new pin
-        return confirm_action(
+        return confirm_set_new_pin(
             ctx,
-            "set_pin",
-            "Enable PIN",
+            br_code,
+            title,
             "enable PIN protection?",
-            "Do you really want to",
-            reverse=True,
+            [
+                "PIN will be used to access this device.",
+                "It should contain at least 4 digits.",
+            ],
         )
 
     # removing non-existing PIN

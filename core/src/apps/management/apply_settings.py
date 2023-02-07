@@ -144,8 +144,8 @@ async def _require_confirm_change_label(ctx: GenericContext, label: str) -> None
     await confirm_action(
         ctx,
         "set_label",
-        "Change label",
-        description="Do you really want to change the label to {}?",
+        "DEVICE NAME",
+        description="Do you want to change device name to\n{}?",
         description_param=label,
         br_code=BRT_PROTECT_CALL,
     )
