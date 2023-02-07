@@ -60,6 +60,7 @@ pub fn fade_backlight(target: i32) {
     }
 }
 
+/// Fill a whole rectangle with a specific color.
 pub fn rect_fill(r: Rect, fg_color: Color) {
     display::bar(r.x0, r.y0, r.width(), r.height(), fg_color.into());
 }
@@ -71,30 +72,34 @@ pub fn rect_stroke(r: Rect, fg_color: Color) {
     display::bar(r.x0 + r.width() - 1, r.y0, 1, r.height(), fg_color.into());
 }
 
+/// Draw a rectangle with rounded corners.
 pub fn rect_fill_rounded(r: Rect, fg_color: Color, bg_color: Color, radius: u8) {
-    assert!([2, 4, 8, 16].iter().any(|allowed| radius == *allowed));
-    display::bar_radius(
-        r.x0,
-        r.y0,
-        r.width(),
-        r.height(),
-        fg_color.into(),
-        bg_color.into(),
-        radius,
-    );
+    if radius == 1 {
+        rect_fill_rounded1(r, fg_color, bg_color);
+    } else {
+        assert!([2, 4, 8, 16].iter().any(|allowed| radius == *allowed));
+        display::bar_radius(
+            r.x0,
+            r.y0,
+            r.width(),
+            r.height(),
+            fg_color.into(),
+            bg_color.into(),
+            radius,
+        );
+    }
 }
 
-// Used on T1 only.
+/// Filling a rectangle with a rounding of 1 pixel - removing the corners.
 pub fn rect_fill_rounded1(r: Rect, fg_color: Color, bg_color: Color) {
-    display::bar(r.x0, r.y0, r.width(), r.height(), fg_color.into());
-    let corners = [
-        r.top_left(),
-        r.top_right() - Offset::x(1),
-        r.bottom_right() - Offset::uniform(1),
-        r.bottom_left() - Offset::y(1),
-    ];
-    for p in corners.iter() {
-        display::bar(p.x, p.y, 1, 1, bg_color.into());
+    rect_fill(r, fg_color);
+    rect_fill_corners(r, bg_color);
+}
+
+/// Filling all four corners of a rectangle with a given color.
+pub fn rect_fill_corners(r: Rect, fg_color: Color) {
+    for p in r.corner_points().iter() {
+        paint_point(p, fg_color);
     }
 }
 
@@ -766,6 +771,12 @@ pub fn dotted_line(start: Point, width: i16, color: Color) {
     }
 }
 
+/// Paints a pixel with a specific color on a given point.
+pub fn paint_point(point: &Point, color: Color) {
+    display::bar(point.x, point.y, 1, 1, color.into());
+}
+
+/// Display QR code
 pub fn qrcode(center: Point, data: &str, max_size: u32, case_sensitive: bool) -> Result<(), Error> {
     qr::render_qrcode(center.x, center.y, data, max_size, case_sensitive)
 }
