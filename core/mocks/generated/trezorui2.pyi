@@ -57,7 +57,7 @@ def confirm_action(
     title: str,
     action: str | None,
     description: str | None,
-    verb: str | None = None,
+    verb: str = "CONFIRM",
     verb_cancel: str | None = None,
     hold: bool = False,
     hold_danger: bool = False,
@@ -102,7 +102,7 @@ def confirm_properties(
 # rust/src/ui/model_tt/layout.rs
 def confirm_reset_device(
     *,
-    title: str,
+    recovery: bool,
     prompt: str,
 ) -> object:
     """Confirm TOS before device setup."""
@@ -157,6 +157,7 @@ def confirm_modify_fee(
     sign: int,
     user_fee_change: str,
     total_fee_new: str,
+    fee_rate_amount: str | None,
 ) -> object:
     """Decrease or increase transaction fee."""
 
@@ -341,7 +342,7 @@ def show_checklist(
     button: str,
 ) -> object:
    """Checklist of backup steps. Active index is highlighted, previous items have check
-   mark nex to them."""
+   mark next to them."""
 
 
 # rust/src/ui/model_tt/layout.rs
@@ -360,7 +361,7 @@ def confirm_recovery(
 def select_word_count(
     *,
     dry_run: bool,
-) -> int | CANCELLED:
+) -> int | str:  # TT returns int
    """Select mnemonic word count from (12, 18, 20, 24, 33)."""
 
 
@@ -389,7 +390,7 @@ def show_progress(
 ) -> object:
    """Show progress loader. Please note that the number of lines reserved on screen for
    description is determined at construction time. If you want multiline descriptions
-   make sure the initial desciption has at least that amount of lines."""
+   make sure the initial description has at least that amount of lines."""
 
 
 # rust/src/ui/model_tt/layout.rs
