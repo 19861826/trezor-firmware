@@ -63,6 +63,7 @@ pub fn set_animation_disabled(disabled: bool) {
 pub fn animation_disabled() -> bool {
     false
 }
+
 #[cfg(not(feature = "ui_debug"))]
 pub fn set_animation_disabled(_disabled: bool) {}
 

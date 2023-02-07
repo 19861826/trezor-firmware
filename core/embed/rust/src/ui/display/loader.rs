@@ -238,7 +238,7 @@ pub fn loader_rust(
                     let x_i = x_c - icon_area.x0;
                     let y_i = y_c - icon_area.y0;
 
-                    let data = unwrap!(icon_data).zdata()
+                    let data = unwrap!(icon_data).toif.zdata()
                         [(((x_i & 0xFE) + (y_i * icon_width)) / 2) as usize];
                     if (x_i & 0x01) == 0 {
                         underlying_color = icon_colortable[(data & 0xF) as usize];

@@ -18,6 +18,9 @@ use crate::trezorhal::{
     },
     uzlib::UZLIB_WINDOW_SIZE,
 };
+#[cfg(feature = "dma2d")]
+use crate::ui::component::image::Image;
+
 #[cfg(not(feature = "dma2d"))]
 use crate::ui::geometry::TOP_LEFT;
 
@@ -25,7 +28,7 @@ use crate::{
     error::Error,
     time::Duration,
     trezorhal::{display, qr, time, uzlib::UzlibContext},
-    ui::{component::image::Image, lerp::Lerp},
+    ui::lerp::Lerp,
 };
 
 // Reexports
