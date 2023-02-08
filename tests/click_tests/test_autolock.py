@@ -110,10 +110,11 @@ def test_autolock_passphrase_keyboard(device_handler: "BackgroundDeviceHandler")
     assert layout.text == "< PassphraseKeyboard >"
 
     CENTER_BUTTON = buttons.grid35(1, 2)
-    # total sleep time: 11 * 1.5 = 16.5 seconds
+    # keep clicking for long enough to trigger the autolock if it incorrectly ignored key presses
+    # total sleep time: 11 * 1.2 = 13.2 seconds
     for _ in range(11):
         debug.click(CENTER_BUTTON)
-        time.sleep(1.5)
+        time.sleep(1.2)
 
     debug.click(buttons.OK, wait=True)
     assert device_handler.result() == "mzAZ4BgqmFHYxhPgdFH2pR2h1X7jJrNFSs"
@@ -132,10 +133,11 @@ def test_autolock_interrupts_passphrase(device_handler: "BackgroundDeviceHandler
     assert layout.text == "< PassphraseKeyboard >"
 
     CENTER_BUTTON = buttons.grid35(1, 2)
-    # total sleep time: 5 * 1.5 = 7.5 seconds
+    # keep clicking for long enough to trigger the autolock if it incorrectly ignored key presses
+    # total sleep time: 5 * 1.2 = 6 seconds
     for _ in range(5):
         debug.click(CENTER_BUTTON)
-        time.sleep(1.5)
+        time.sleep(1.2)
 
     # wait for autolock to kick in
     time.sleep(10.1)
