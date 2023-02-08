@@ -2,11 +2,9 @@ use crate::ui::{
     component::{Component, Event, EventCtx, Never, Pad},
     constant::screen,
     display::{self, Font},
-    geometry::{Offset, Point, Rect},
+    geometry::{Offset, Rect},
     model_tt::bootloader::theme::{BLD_BG, BLD_TITLE_COLOR},
 };
-
-use crate::ui::model_tt::constant::{HEIGHT, WIDTH};
 
 pub struct Connect {
     bg: Pad,
@@ -29,8 +27,7 @@ impl Component for Connect {
     type Msg = Never;
 
     fn place(&mut self, bounds: Rect) -> Rect {
-        self.bg
-            .place(Rect::new(Point::new(0, 0), Point::new(WIDTH, HEIGHT)));
+        self.bg.place(screen());
         bounds
     }
 

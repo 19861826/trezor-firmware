@@ -1,13 +1,14 @@
 use crate::ui::{
     component::{Child, Component, Event, EventCtx, Label, Pad},
+    constant::screen,
     display::Icon,
     geometry::{Alignment, Insets, Point, Rect},
     model_tt::{
         bootloader::theme::{
-            button_bld_menu, button_bld_menu_item, BLD_BG, CLOSE, ERASE, REBOOT, TEXT_TITLE,
+            button_bld_menu, button_bld_menu_item, BLD_BG, CLOSE, CORNER_BUTTON_AREA, ERASE,
+            REBOOT, TEXT_TITLE, TITLE_AREA,
         },
         component::{Button, ButtonMsg::Clicked, IconText},
-        constant::{HEIGHT, WIDTH},
     },
 };
 use heapless::String;
@@ -61,14 +62,9 @@ impl Component for Menu {
     type Msg = MenuMsg;
 
     fn place(&mut self, bounds: Rect) -> Rect {
-        self.bg
-            .place(Rect::new(Point::new(0, 0), Point::new(WIDTH, HEIGHT)));
-        self.title
-            .place(Rect::new(Point::new(15, 24), Point::new(180, 40)));
-        self.close.place(Rect::new(
-            Point::new(187, 15),
-            Point::new(187 + 38, 15 + 38),
-        ));
+        self.bg.place(screen());
+        self.title.place(TITLE_AREA);
+        self.close.place(CORNER_BUTTON_AREA);
         self.reboot
             .place(Rect::new(Point::new(16, 66), Point::new(16 + 209, 66 + 48)));
         self.reset.place(Rect::new(

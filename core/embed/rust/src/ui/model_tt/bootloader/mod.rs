@@ -76,6 +76,7 @@ where
     F::Msg: ReturnToC,
 {
     frame.place(constant::screen());
+    display::sync();
     frame.paint();
     fadein();
 
@@ -88,6 +89,7 @@ where
             if let Some(message) = msg {
                 return message.return_to_c();
             }
+            display::sync();
             frame.paint();
         }
     }
@@ -110,11 +112,13 @@ extern "C" fn screen_install_confirm(
     vendor_str: *const cty::c_char,
     vendor_str_len: u8,
     version: *const cty::c_char,
+    fingerprint: *const cty::c_char,
     downgrade: bool,
     vendor: bool,
 ) -> u32 {
     let text = unwrap!(unsafe { from_c_array(vendor_str, vendor_str_len as usize) });
     let version = unwrap!(unsafe { from_c_str(version) });
+    let fingerprint = unwrap!(unsafe { from_c_array(fingerprint, 64) });
 
     let icon = Some(Icon::new(RECEIVE));
 
@@ -149,10 +153,24 @@ extern "C" fn screen_install_confirm(
     let message =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
+    let mut messages = ParagraphVecShort::new();
+    messages.add(Paragraph::new(&theme::TEXT_FINGERPRINT, fingerprint));
+
+    let fingerprint =
+        Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
+
     let left = Button::with_text("CANCEL").styled(button_install_cancel());
     let right = Button::with_text("INSTALL").styled(button_install_confirm());
 
-    let mut frame = Confirm::new(BLD_BG, icon, message, left, right, false);
+    let mut frame = Confirm::new(
+        BLD_BG,
+        icon,
+        message,
+        left,
+        right,
+        false,
+        Some(("FW FINGERPRINT", fingerprint)),
+    );
 
     run(&mut frame)
 }
@@ -174,7 +192,7 @@ extern "C" fn screen_wipe_confirm() -> u32 {
     let left = Button::with_text("WIPE").styled(button_wipe_confirm());
     let right = Button::with_text("CANCEL").styled(button_wipe_cancel());
 
-    let mut frame = Confirm::new(BLD_WIPE_COLOR, icon, message, left, right, true);
+    let mut frame = Confirm::new(BLD_WIPE_COLOR, icon, message, left, right, true, None);
 
     run(&mut frame)
 }

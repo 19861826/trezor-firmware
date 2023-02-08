@@ -3,6 +3,7 @@ use crate::ui::{
         text::paragraphs::{Paragraph, ParagraphVecShort, Paragraphs, VecExt},
         Child, Component, Event, EventCtx, Label, Pad,
     },
+    constant::screen,
     display::Icon,
     geometry::{Alignment, Insets, LinearPlacement, Point, Rect},
     model_tt::{
@@ -13,9 +14,9 @@ use crate::ui::{
 use heapless::String;
 
 use crate::ui::model_tt::{
-    bootloader::theme::TEXT_TITLE,
+    bootloader::theme::{CONTENT_PADDING, CORNER_BUTTON_AREA, TEXT_TITLE, TITLE_AREA},
     component::Button,
-    constant::{HEIGHT, WIDTH},
+    constant::WIDTH,
 };
 
 #[repr(u32)]
@@ -68,20 +69,18 @@ impl Component for Intro {
     type Msg = IntroMsg;
 
     fn place(&mut self, bounds: Rect) -> Rect {
-        self.bg
-            .place(Rect::new(Point::new(0, 0), Point::new(WIDTH, HEIGHT)));
-        self.title
-            .place(Rect::new(Point::new(15, 24), Point::new(180, 40)));
-        self.menu.place(Rect::new(
-            Point::new(187, 15),
-            Point::new(187 + 38, 15 + 38),
-        ));
+        const BUTTON_AREA_START: i16 = 178;
+        self.bg.place(screen());
+        self.title.place(TITLE_AREA);
+        self.menu.place(CORNER_BUTTON_AREA);
         self.host.place(Rect::new(
-            Point::new(16, 178),
-            Point::new(16 + 209, 178 + 48),
+            Point::new(16, BUTTON_AREA_START),
+            Point::new(16 + 209, BUTTON_AREA_START + 48),
         ));
-        self.text
-            .place(Rect::new(Point::new(15, 75), Point::new(225, 200)));
+        self.text.place(Rect::new(
+            Point::new(CONTENT_PADDING, 75),
+            Point::new(WIDTH - CONTENT_PADDING, BUTTON_AREA_START),
+        ));
         bounds
     }
 

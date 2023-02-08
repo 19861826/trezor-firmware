@@ -1,8 +1,10 @@
 use crate::{
     alpha,
     ui::{
-        component::text::TextStyle,
+        component::{text::TextStyle, LineBreaking::BreakWordsNoHyphen},
+        constant::WIDTH,
         display::{Color, Font},
+        geometry::{Offset, Point, Rect},
         model_tt::{
             component::{ButtonStyle, ButtonStyleSheet},
             theme::{BLACK, FG, GREY_DARK, GREY_LIGHT, GREY_MEDIUM, WHITE},
@@ -36,6 +38,22 @@ pub const WELCOME_COLOR: Color = BLACK;
 // Commonly used corner radius (i.e. for buttons).
 pub const RADIUS: u8 = 2;
 
+// Commonly used constants for UI elements.
+pub const CONTENT_PADDING: i16 = 15;
+pub const TITLE_AREA: Rect = Rect::new(Point::new(CONTENT_PADDING, 16), Point::new(180, 32));
+pub const CORNER_BUTTON_SIZE: i16 = 32;
+pub const CORNER_BUTTON_PADDING: i16 = 8;
+pub const CORNER_BUTTON_AREA: Rect = Rect::from_top_left_and_size(
+    Point::new(
+        WIDTH - CORNER_BUTTON_SIZE - CORNER_BUTTON_PADDING,
+        CORNER_BUTTON_PADDING,
+    ),
+    Offset::uniform(CORNER_BUTTON_SIZE),
+);
+pub const TITLE_AREA_HEIGHT: i16 = 16;
+pub const TITLE_AREA_START_Y: i16 = 8;
+pub const BUTTON_AREA_START: i16 = 176;
+
 // UI icons.
 pub const ICON_CANCEL: &[u8] = include_res!("model_tt/res/cancel.toif");
 pub const ICON_CONFIRM: &[u8] = include_res!("model_tt/res/confirm.toif");
@@ -48,6 +66,7 @@ pub const REBOOT: &[u8] = include_res!("model_tt/res/reboot.toif");
 pub const MENU: &[u8] = include_res!("model_tt/res/menu.toif");
 pub const RECEIVE: &[u8] = include_res!("model_tt/res/receive.toif");
 pub const LOGO_EMPTY: &[u8] = include_res!("model_tt/res/trezor_empty.toif");
+pub const INFO_SMALL: &[u8] = include_res!("model_tt/res/info_small.toif");
 
 pub fn button_install_cancel() -> ButtonStyleSheet {
     ButtonStyleSheet {
@@ -264,6 +283,9 @@ pub const TEXT_SUBMSG_INITIAL: TextStyle = TextStyle::new(
 );
 
 pub const TEXT_NORMAL: TextStyle = TextStyle::new(Font::NORMAL, BLD_FG, BLD_BG, BLD_FG, BLD_FG);
+pub const TEXT_FINGERPRINT: TextStyle =
+    TextStyle::new(Font::NORMAL, BLD_FG, BLD_BG, BLD_FG, BLD_FG)
+        .with_line_breaking(BreakWordsNoHyphen);
 pub const TEXT_BOLD: TextStyle = TextStyle::new(Font::BOLD, BLD_FG, BLD_BG, BLD_FG, BLD_FG);
 pub const TEXT_SUBMSG: TextStyle = TextStyle::new(
     Font::BOLD,

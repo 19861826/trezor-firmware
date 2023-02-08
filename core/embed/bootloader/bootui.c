@@ -51,9 +51,6 @@
 #define COLOR_BL_GRAY COLOR_BL_FG
 #endif
 
-#define COLOR_WELCOME_BG COLOR_WHITE  // welcome background
-#define COLOR_WELCOME_FG COLOR_BLACK  // welcome foreground
-
 // common shared functions
 
 static void format_ver_bfr(const char *format, uint32_t version, char *bfr,
@@ -153,24 +150,40 @@ uint32_t ui_screen_menu(void) {
 
 // install UI
 
+static void format_fingerprint(char *out, uint8_t *const in) {
+  static const char *hexdigits = "0123456789abcdef";
+  for (int i = 0; i < 32; i++) {
+    out[i * 2] = hexdigits[(in[i] >> 4) & 0xF];
+    out[i * 2 + 1] = hexdigits[in[i] & 0xF];
+  }
+}
+
 uint32_t ui_screen_install_confirm_upgrade(const vendor_header *const vhdr,
                                            const image_header *const hdr) {
+  char fingerprint_str[64];
+  uint8_t fingerprint[32];
+  get_image_fingerprint(hdr, fingerprint);
+  format_fingerprint(fingerprint_str, fingerprint);
   const char *ver_str = format_ver("%d.%d.%d", hdr->version);
-  return screen_install_confirm(vhdr->vstr, vhdr->vstr_len, ver_str, false,
-                                false);
+  return screen_install_confirm(vhdr->vstr, vhdr->vstr_len, ver_str,
+                                fingerprint_str, false, false);
 }
 
 uint32_t ui_screen_install_confirm_newvendor_or_downgrade_wipe(
     const vendor_header *const vhdr, const image_header *const hdr,
     secbool downgrade_wipe) {
+  char fingerprint_str[64];
+  uint8_t fingerprint[32];
+  get_image_fingerprint(hdr, fingerprint);
+  format_fingerprint(fingerprint_str, fingerprint);
   if (downgrade_wipe) {
     const char *ver_str = format_ver("%d.%d.%d", hdr->version);
-    return screen_install_confirm(vhdr->vstr, vhdr->vstr_len, ver_str, true,
-                                  false);
+    return screen_install_confirm(vhdr->vstr, vhdr->vstr_len, ver_str,
+                                  fingerprint_str, true, false);
   } else {
     const char *ver_str = format_ver("%d.%d.%d", hdr->version);
-    return screen_install_confirm(vhdr->vstr, vhdr->vstr_len, ver_str, false,
-                                  true);
+    return screen_install_confirm(vhdr->vstr, vhdr->vstr_len, ver_str,
+                                  fingerprint_str, false, true);
   }
 }
 
