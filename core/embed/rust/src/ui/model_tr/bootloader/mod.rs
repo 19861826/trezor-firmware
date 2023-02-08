@@ -31,7 +31,7 @@ use crate::ui::{
             theme::{bld_button_cancel, bld_button_default, BLD_BG, BLD_FG},
         },
         component::{Button, ButtonPos, ResultScreen},
-        theme::LOGO_EMPTY,
+        theme::{ICON_FAIL, ICON_SUCCESS, LOGO_EMPTY},
     },
     util::{from_c_array, from_c_str},
 };
@@ -273,7 +273,14 @@ extern "C" fn screen_wipe_success() -> u32 {
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(BLD_FG, BLD_BG, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(
+        BLD_FG,
+        BLD_BG,
+        Icon::new(ICON_SUCCESS),
+        m_top,
+        m_bottom,
+        true,
+    );
     frame.place(SCREEN_ADJ);
     frame.paint();
     0
@@ -295,7 +302,7 @@ extern "C" fn screen_wipe_fail() -> u32 {
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(BLD_FG, BLD_BG, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(BLD_FG, BLD_BG, Icon::new(ICON_FAIL), m_top, m_bottom, true);
     frame.place(SCREEN_ADJ);
     frame.paint();
     0
@@ -321,7 +328,7 @@ extern "C" fn screen_install_fail() -> u32 {
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(BLD_FG, BLD_BG, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(BLD_FG, BLD_BG, Icon::new(ICON_FAIL), m_top, m_bottom, true);
     frame.place(SCREEN_ADJ);
     frame.paint();
     0
@@ -341,7 +348,14 @@ fn screen_install_success_bld(msg: &'static str, complete_draw: bool) -> u32 {
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(BLD_FG, BLD_BG, m_top, m_bottom, complete_draw);
+    let mut frame = ResultScreen::new(
+        BLD_FG,
+        BLD_BG,
+        Icon::new(ICON_SUCCESS),
+        m_top,
+        m_bottom,
+        complete_draw,
+    );
     frame.place(SCREEN_ADJ);
     frame.paint();
     0
@@ -361,7 +375,14 @@ fn screen_install_success_initial(msg: &'static str, complete_draw: bool) -> u32
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(BLD_FG, BLD_BG, m_top, m_bottom, complete_draw);
+    let mut frame = ResultScreen::new(
+        BLD_FG,
+        BLD_BG,
+        Icon::new(ICON_SUCCESS),
+        m_top,
+        m_bottom,
+        complete_draw,
+    );
     frame.place(SCREEN_ADJ);
     frame.paint();
     0

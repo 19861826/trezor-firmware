@@ -3,23 +3,38 @@ use crate::ui::{
         text::paragraphs::{Paragraph, ParagraphVecShort, Paragraphs, VecExt},
         Component,
     },
+    display::Icon,
     geometry::LinearPlacement,
     model_tr::{
         component::ResultScreen,
         constant,
-        theme::{BLACK, TEXT_BOLD, TEXT_NORMAL, WHITE},
+        theme::{BLACK, ICON_FAIL, TEXT_BOLD, TEXT_NORMAL, WHITE},
     },
     util::from_c_str,
 };
+
+#[cfg(not(feature = "micropython"))]
+fn get_str(text: &str) -> &str {
+    text
+}
+
+#[cfg(feature = "micropython")]
+use crate::micropython::buffer::StrBuffer;
+#[cfg(feature = "micropython")]
+fn get_str(text: &'static str) -> StrBuffer {
+    text.into()
+}
 
 #[no_mangle]
 extern "C" fn screen_fatal_error(msg: *const cty::c_char, file: *const cty::c_char) -> u32 {
     let m_top = if msg.is_null() {
         let mut messages = ParagraphVecShort::new();
 
-        messages.add(Paragraph::new(&TEXT_BOLD, "FATAL ERROR!").centered());
+        messages.add(Paragraph::new(&TEXT_BOLD, get_str("FATAL ERROR!")).centered());
 
-        messages.add(Paragraph::new(&TEXT_NORMAL, unwrap!(unsafe { from_c_str(file) })).centered());
+        messages.add(
+            Paragraph::new(&TEXT_NORMAL, get_str(unwrap!(unsafe { from_c_str(file) }))).centered(),
+        );
 
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center())
     } else {
@@ -27,20 +42,20 @@ extern "C" fn screen_fatal_error(msg: *const cty::c_char, file: *const cty::c_ch
 
         let mut messages = ParagraphVecShort::new();
 
-        messages.add(Paragraph::new(&TEXT_BOLD, "FATAL ERROR!").centered());
-        messages.add(Paragraph::new(&TEXT_NORMAL, msg).centered());
+        messages.add(Paragraph::new(&TEXT_BOLD, get_str("FATAL ERROR!")).centered());
+        messages.add(Paragraph::new(&TEXT_NORMAL, get_str(msg)).centered());
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center())
     };
 
     let mut messages = ParagraphVecShort::new();
 
-    messages.add(Paragraph::new(&TEXT_BOLD, "PLEASE CONTACT").centered());
-    messages.add(Paragraph::new(&TEXT_BOLD, "TREZOR SUPPORT").centered());
+    messages.add(Paragraph::new(&TEXT_BOLD, get_str("PLEASE CONTACT")).centered());
+    messages.add(Paragraph::new(&TEXT_BOLD, get_str("TREZOR SUPPORT")).centered());
 
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(WHITE, BLACK, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(WHITE, BLACK, Icon::new(ICON_FAIL), m_top, m_bottom, true);
     frame.place(constant::screen());
     frame.paint();
     0
@@ -53,26 +68,26 @@ extern "C" fn screen_error_shutdown(label: *const cty::c_char, msg: *const cty::
     let m_top = if msg.is_null() {
         let mut messages = ParagraphVecShort::new();
 
-        messages.add(Paragraph::new(&TEXT_BOLD, label).centered());
+        messages.add(Paragraph::new(&TEXT_BOLD, get_str(label)).centered());
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center())
     } else {
         let msg = unwrap!(unsafe { from_c_str(msg) });
 
         let mut messages = ParagraphVecShort::new();
 
-        messages.add(Paragraph::new(&TEXT_BOLD, label).centered());
-        messages.add(Paragraph::new(&TEXT_NORMAL, msg).centered());
+        messages.add(Paragraph::new(&TEXT_BOLD, get_str(label)).centered());
+        messages.add(Paragraph::new(&TEXT_NORMAL, get_str(msg)).centered());
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center())
     };
 
     let mut messages = ParagraphVecShort::new();
 
-    messages.add(Paragraph::new(&TEXT_BOLD, "PLEASE UNPLUG").centered());
-    messages.add(Paragraph::new(&TEXT_BOLD, "THE DEVICE").centered());
+    messages.add(Paragraph::new(&TEXT_BOLD, get_str("PLEASE UNPLUG")).centered());
+    messages.add(Paragraph::new(&TEXT_BOLD, get_str("THE DEVICE")).centered());
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
-    let mut frame = ResultScreen::new(WHITE, BLACK, m_top, m_bottom, true);
+    let mut frame = ResultScreen::new(WHITE, BLACK, Icon::new(ICON_FAIL), m_top, m_bottom, true);
     frame.place(constant::screen());
     frame.paint();
     0
