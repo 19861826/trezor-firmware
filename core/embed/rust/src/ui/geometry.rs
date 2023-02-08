@@ -469,6 +469,7 @@ pub enum Alignment {
 pub type Alignment2D = (Alignment, Alignment);
 
 pub const TOP_LEFT: Alignment2D = (Alignment::Start, Alignment::Start);
+pub const TOP_CENTER: Alignment2D = (Alignment::Center, Alignment::Start);
 pub const TOP_RIGHT: Alignment2D = (Alignment::Start, Alignment::End);
 pub const CENTER: Alignment2D = (Alignment::Center, Alignment::Center);
 pub const BOTTOM_LEFT: Alignment2D = (Alignment::Start, Alignment::End);

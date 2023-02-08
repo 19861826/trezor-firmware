@@ -120,34 +120,26 @@ extern "C" fn screen_install_confirm(
     let version = unwrap!(unsafe { from_c_str(version) });
     let fingerprint = unwrap!(unsafe { from_c_array(fingerprint, 64) });
 
-    let icon = Some(Icon::new(RECEIVE));
-
     let mut version_str: String<30> = String::new();
-
-    if !vendor {
-        unwrap!(version_str.push_str("to version "));
-    } else {
-        unwrap!(version_str.push_str("version "));
-    }
+    unwrap!(version_str.push_str("Firmware version "));
     unwrap!(version_str.push_str(version));
-    unwrap!(version_str.push_str("?"));
 
-    let msg = if downgrade {
-        "Downgrade firmware by"
+    let title = if downgrade {
+        "DOWNGRADE FW"
     } else if vendor {
-        "Change vendor to"
+        "CHANGE FW VENDOR"
     } else {
-        "Update firmware by"
+        "UPDATE FIRMWARE"
     };
 
     let mut messages = ParagraphVecShort::new();
 
-    messages.add(Paragraph::new(&theme::TEXT_NORMAL, msg).centered());
-    messages.add(Paragraph::new(&theme::TEXT_NORMAL, text).centered());
-    messages.add(Paragraph::new(&theme::TEXT_NORMAL, version_str.as_ref()).centered());
+    messages.add(Paragraph::new(&theme::TEXT_NORMAL, version_str.as_ref()));
+    messages.add(Paragraph::new(&theme::TEXT_NORMAL, "by"));
+    messages.add(Paragraph::new(&theme::TEXT_NORMAL, text));
 
     if vendor || downgrade {
-        messages.add(Paragraph::new(&theme::TEXT_BOLD, "Seed will be erased!").centered());
+        messages.add(Paragraph::new(&theme::TEXT_BOLD, "Seed will be erased!").with_top_padding(8));
     }
 
     let message =
@@ -164,11 +156,11 @@ extern "C" fn screen_install_confirm(
 
     let mut frame = Confirm::new(
         BLD_BG,
-        icon,
-        message,
+        None,
         left,
         right,
         false,
+        (Some(title), message),
         Some(("FW FINGERPRINT", fingerprint)),
     );
 
@@ -192,7 +184,15 @@ extern "C" fn screen_wipe_confirm() -> u32 {
     let left = Button::with_text("WIPE").styled(button_wipe_confirm());
     let right = Button::with_text("CANCEL").styled(button_wipe_cancel());
 
-    let mut frame = Confirm::new(BLD_WIPE_COLOR, icon, message, left, right, true, None);
+    let mut frame = Confirm::new(
+        BLD_WIPE_COLOR,
+        icon,
+        left,
+        right,
+        true,
+        (None, message),
+        None,
+    );
 
     run(&mut frame)
 }

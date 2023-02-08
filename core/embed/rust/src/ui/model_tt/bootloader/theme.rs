@@ -40,7 +40,7 @@ pub const RADIUS: u8 = 2;
 
 // Commonly used constants for UI elements.
 pub const CONTENT_PADDING: i16 = 15;
-pub const TITLE_AREA: Rect = Rect::new(Point::new(CONTENT_PADDING, 16), Point::new(180, 32));
+pub const TITLE_AREA: Rect = Rect::new(Point::new(CONTENT_PADDING, 16), Point::new(200, 32));
 pub const CORNER_BUTTON_SIZE: i16 = 32;
 pub const CORNER_BUTTON_PADDING: i16 = 8;
 pub const CORNER_BUTTON_AREA: Rect = Rect::from_top_left_and_size(

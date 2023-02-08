@@ -6,14 +6,14 @@ use crate::ui::{
     constant,
     constant::screen,
     display::{Color, Icon},
-    geometry::{Alignment, Insets, Offset, Point, Rect, CENTER},
+    geometry::{Alignment, Insets, Offset, Point, Rect, TOP_CENTER},
     model_tt::{
         bootloader::theme::{
             button_bld_menu, BUTTON_AREA_START, CLOSE, CONTENT_PADDING, CORNER_BUTTON_AREA,
             INFO_SMALL, TEXT_TITLE, TITLE_AREA,
         },
         component::{Button, ButtonMsg::Clicked},
-        constant::{HEIGHT, WIDTH},
+        constant::WIDTH,
         theme::WHITE,
     },
 };
@@ -30,6 +30,7 @@ pub struct Confirm<'a> {
     content_pad: Pad,
     bg_color: Color,
     icon: Option<Icon>,
+    title: Option<Child<Label<String<20>>>>,
     message: Child<Paragraphs<ParagraphVecShort<&'a str>>>,
     left: Child<Button<&'static str>>,
     right: Child<Button<&'static str>>,
@@ -46,10 +47,10 @@ impl<'a> Confirm<'a> {
     pub fn new(
         bg_color: Color,
         icon: Option<Icon>,
-        message: Paragraphs<ParagraphVecShort<&'a str>>,
         left: Button<&'static str>,
         right: Button<&'static str>,
         confirm_left: bool,
+        confirm: (Option<&'static str>, Paragraphs<ParagraphVecShort<&'a str>>),
         info: Option<(&'static str, Paragraphs<ParagraphVecShort<&'a str>>)>,
     ) -> Self {
         let mut instance = Self {
@@ -57,7 +58,7 @@ impl<'a> Confirm<'a> {
             content_pad: Pad::with_background(bg_color),
             bg_color,
             icon,
-            message: Child::new(message),
+            message: Child::new(confirm.1),
             left: Child::new(left),
             right: Child::new(right),
             close_button: None,
@@ -66,6 +67,11 @@ impl<'a> Confirm<'a> {
             info_text: None,
             confirm_left,
             show_info: false,
+            title: confirm.0.map(|title| {
+                let mut lbl: String<20> = String::new();
+                unwrap!(lbl.push_str(title));
+                Child::new(Label::new(lbl, Alignment::Start, TEXT_TITLE))
+            }),
         };
         if let Some((title, text)) = info {
             let mut lbl: String<20> = String::new();
@@ -98,9 +104,14 @@ impl<'a> Component for Confirm<'a> {
             Point::zero(),
             Point::new(WIDTH, BUTTON_AREA_START),
         ));
+        let icon_height = if let Some(icon) = self.icon {
+            icon.toif.height()
+        } else {
+            0
+        };
         self.message.place(Rect::new(
-            Point::new(CONTENT_PADDING, 59),
-            Point::new(WIDTH - CONTENT_PADDING, HEIGHT - 64),
+            Point::new(CONTENT_PADDING, 32 + icon_height),
+            Point::new(WIDTH - CONTENT_PADDING, BUTTON_AREA_START),
         ));
 
         let button_size = Offset::new(102, 48);
@@ -115,6 +126,7 @@ impl<'a> Component for Confirm<'a> {
         self.info_button.place(CORNER_BUTTON_AREA);
         self.close_button.place(CORNER_BUTTON_AREA);
         self.info_title.place(TITLE_AREA);
+        self.title.place(TITLE_AREA);
         self.info_text.place(Rect::new(
             Point::new(CONTENT_PADDING, TITLE_AREA.y1),
             Point::new(WIDTH - CONTENT_PADDING, BUTTON_AREA_START),
@@ -127,6 +139,7 @@ impl<'a> Component for Confirm<'a> {
             if let Some(Clicked) = self.close_button.event(ctx, event) {
                 self.show_info = false;
                 self.content_pad.clear();
+                self.title.request_complete_repaint(ctx);
                 self.message.request_complete_repaint(ctx);
                 return None;
             }
@@ -166,13 +179,14 @@ impl<'a> Component for Confirm<'a> {
             self.right.paint();
         } else {
             self.info_button.paint();
+            self.title.paint();
             self.message.paint();
             self.left.paint();
             self.right.paint();
             if let Some(icon) = self.icon {
                 icon.draw(
-                    Point::new(screen().center().x, 45),
-                    CENTER,
+                    Point::new(screen().center().x, 32),
+                    TOP_CENTER,
                     WHITE,
                     self.bg_color,
                 );
