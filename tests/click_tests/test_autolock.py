@@ -133,7 +133,7 @@ def test_autolock_interrupts_passphrase(device_handler: "BackgroundDeviceHandler
     assert layout.text == "< PassphraseKeyboard >"
 
     CENTER_BUTTON = buttons.grid35(1, 2)
-    # keep clicking for long enough to trigger the autolock if it incorrectly ignored key presses
+    # autolock must activate even if we pressed some buttons
     for _ in range(math.ceil(6 / 1.5)):
         debug.click(CENTER_BUTTON)
         time.sleep(1.5)
