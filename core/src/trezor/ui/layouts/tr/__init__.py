@@ -73,21 +73,6 @@ class RustLayout(ui.Layout):
             raw = self._read_content_raw()
             return " ".join(raw).split("\n")
 
-        def _place_layout(self) -> None:
-            """It is necessary to place the layout to get data about its screen content."""
-            self.layout.place()
-
-        def _read_content_raw(self) -> list[str]:
-            """Reads raw trace content from Rust layout."""
-            result: list[str] = []
-
-            def callback(*args: str):
-                for arg in args:
-                    result.append(str(arg))
-
-            self.layout.trace(callback)
-            return result
-
         def _press_left(self) -> Any:
             """Triggers left button press."""
             self.layout.button_event(io.BUTTON_PRESSED, io.BUTTON_LEFT)
@@ -208,6 +193,21 @@ class RustLayout(ui.Layout):
             if msg is not None:
                 raise ui.Result(msg)
             self._paint()
+
+    def _place_layout(self) -> None:
+        """It is necessary to place the layout to get data about its screen content."""
+        self.layout.place()
+
+    def _read_content_raw(self) -> list[str]:
+        """Reads raw trace content from Rust layout."""
+        result: list[str] = []
+
+        def callback(*args: str):
+            for arg in args:
+                result.append(str(arg))
+
+        self.layout.trace(callback)
+        return result
 
     def page_count(self) -> int:
         """How many paginated pages current screen has."""
