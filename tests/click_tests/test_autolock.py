@@ -14,6 +14,7 @@
 # You should have received a copy of the License along with this library.
 # If not, see <https://www.gnu.org/licenses/lgpl-3.0.html>.
 
+import math
 import time
 from typing import TYPE_CHECKING
 
@@ -111,10 +112,9 @@ def test_autolock_passphrase_keyboard(device_handler: "BackgroundDeviceHandler")
 
     CENTER_BUTTON = buttons.grid35(1, 2)
     # keep clicking for long enough to trigger the autolock if it incorrectly ignored key presses
-    # total sleep time: 11 * 1.2 = 13.2 seconds
-    for _ in range(11):
+    for _ in range(math.ceil(11 / 1.5)):
         debug.click(CENTER_BUTTON)
-        time.sleep(1.2)
+        time.sleep(1.5)
 
     debug.click(buttons.OK, wait=True)
     assert device_handler.result() == "mzAZ4BgqmFHYxhPgdFH2pR2h1X7jJrNFSs"
@@ -134,10 +134,9 @@ def test_autolock_interrupts_passphrase(device_handler: "BackgroundDeviceHandler
 
     CENTER_BUTTON = buttons.grid35(1, 2)
     # keep clicking for long enough to trigger the autolock if it incorrectly ignored key presses
-    # total sleep time: 5 * 1.2 = 6 seconds
-    for _ in range(5):
+    for _ in range(math.ceil(6 / 1.5)):
         debug.click(CENTER_BUTTON)
-        time.sleep(1.2)
+        time.sleep(1.5)
 
     # wait for autolock to kick in
     time.sleep(10.1)
