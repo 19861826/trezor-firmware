@@ -642,11 +642,11 @@
 "TT_test_lock.py::test_hold_to_lock": "11a333c2bf616cefbdd8448b6fc54dd67610fd218c5007bcf3b796521885d017",
 "TT_test_recovery.py::test_recovery_bip39": "b634b796a069eff75531d1532b3b6a20d22d30b880acc3081db52d38f7ff3207",
 "TT_test_recovery.py::test_recovery_slip39_basic": "6b76da382159b7d157318226f26bdd4cec6603fc288b69a835f078f55bba088f",
-"TT_test_reset_bip39.py::test_reset_bip39": "fdba31ba008dd857f407c51c719c3dfb76fc74052106e958d9fddf364cc90554",
-"TT_test_reset_slip39_advanced.py::test_reset_slip39_advanced_16of16groups_16of16shares": "e9224614d59b6343b919eeea5aa71c634efb8d9ae2e237723b999d78765329ff",
-"TT_test_reset_slip39_advanced.py::test_reset_slip39_advanced_2of2groups_2of2shares": "9b5f8c87adce9704508ce8017da0f12154173f32ac11061e886186ac63eb5aa2",
-"TT_test_reset_slip39_basic.py::test_reset_slip39_basic_16of16": "9bc7d4858fdebfe8b2074d964491e7b4dfc01ff79e8062fbcbd4b8151242e92d",
-"TT_test_reset_slip39_basic.py::test_reset_slip39_basic_1of1": "f3af9ec41f672935db29323795001a31c73c3aa7cacac323f83a12875a56a198"
+"TT_test_reset_bip39.py::test_reset_bip39": "8b4a3d1692234490d582436a297ce795dbb9e8a9cc309bc5ec8d2ae533cbfa73",
+"TT_test_reset_slip39_advanced.py::test_reset_slip39_advanced_16of16groups_16of16shares": "bda1d75d42149c229ba9023eacf628de406d1841deb6d703e7fbd19595b484db",
+"TT_test_reset_slip39_advanced.py::test_reset_slip39_advanced_2of2groups_2of2shares": "1fe25ec64c52f082be572c6c1551d3654bb2a695cdd1f1f1ee917459873e905e",
+"TT_test_reset_slip39_basic.py::test_reset_slip39_basic_16of16": "0051f0c84a3392c961ba51bc9955a8efbde536207bd824c78e97e0524ff3d8bd",
+"TT_test_reset_slip39_basic.py::test_reset_slip39_basic_1of1": "c389371657a67d1726297741acfb76b2e2037bfc2b5e359ac11e6fbeecd54844"
 },
 "device_tests": {
 "TT_binance-test_get_address.py::test_binance_get_address[m-44h-714h-0h-0-0-bnb1hgm0p7khfk85zpz-68e2cb5a": "1cb2b0665827b1c8521f2ec85615e3335d53ba227ae117b651bf4695953a7ee5",
