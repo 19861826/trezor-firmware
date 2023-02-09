@@ -28,7 +28,7 @@ use crate::ui::{
             theme::{
                 button_install_cancel, button_install_confirm, button_wipe_cancel,
                 button_wipe_confirm, BLD_BG, BLD_FG, BLD_WIPE_COLOR, ERASE_BIG, LOGO_EMPTY,
-                RECEIVE, WELCOME_COLOR,
+                RECEIVE, TEXT_WIPE_BOLD, WELCOME_COLOR,
             },
         },
         component::{Button, ResultScreen},
@@ -120,9 +120,13 @@ extern "C" fn screen_install_confirm(
     let version = unwrap!(unsafe { from_c_str(version) });
     let fingerprint = unwrap!(unsafe { from_c_array(fingerprint, 64) });
 
-    let mut version_str: String<30> = String::new();
+    let mut version_str: String<64> = String::new();
     unwrap!(version_str.push_str("Firmware version "));
     unwrap!(version_str.push_str(version));
+
+    let mut vendor_str: String<64> = String::new();
+    unwrap!(vendor_str.push_str("by "));
+    unwrap!(vendor_str.push_str(text));
 
     let title = if downgrade {
         "DOWNGRADE FW"
@@ -135,11 +139,11 @@ extern "C" fn screen_install_confirm(
     let mut messages = ParagraphVecShort::new();
 
     messages.add(Paragraph::new(&theme::TEXT_NORMAL, version_str.as_ref()));
-    messages.add(Paragraph::new(&theme::TEXT_NORMAL, "by"));
-    messages.add(Paragraph::new(&theme::TEXT_NORMAL, text));
+    messages.add(Paragraph::new(&theme::TEXT_NORMAL, vendor_str.as_ref()));
 
     if vendor || downgrade {
-        messages.add(Paragraph::new(&theme::TEXT_BOLD, "Seed will be erased!").with_top_padding(8));
+        messages
+            .add(Paragraph::new(&theme::TEXT_BOLD, "Seed will be erased!").with_top_padding(16));
     }
 
     let message =
@@ -216,7 +220,24 @@ extern "C" fn screen_intro(
     let version = unwrap!(unsafe { from_c_str(version) });
     let bld_version = unwrap!(unsafe { from_c_str(bld_version) });
 
-    run(&mut Intro::new(bld_version, vendor, version))
+    let mut fw: String<64> = String::new();
+    unwrap!(fw.push_str("Firmware "));
+    unwrap!(fw.push_str(version));
+
+    let mut vendor_: String<64> = String::new();
+    unwrap!(vendor_.push_str("by "));
+    unwrap!(vendor_.push_str(vendor));
+
+    let mut messages = ParagraphVecShort::new();
+
+    messages.add(Paragraph::new(&theme::TEXT_NORMAL, fw.as_ref()));
+    messages.add(Paragraph::new(&theme::TEXT_NORMAL, vendor_.as_ref()));
+
+    let p = Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_start());
+
+    let mut frame = Intro::new(bld_version, p);
+
+    run(&mut frame)
 }
 
 fn screen_progress(
@@ -282,22 +303,22 @@ extern "C" fn screen_connect() -> u32 {
 extern "C" fn screen_wipe_success() -> u32 {
     let mut messages = ParagraphVecShort::new();
 
-    messages.add(Paragraph::new(&theme::TEXT_BOLD, "Trezor wiped").centered());
-    messages.add(Paragraph::new(&theme::TEXT_BOLD, "successfully.").centered());
+    messages.add(Paragraph::new(&TEXT_ERROR_BOLD, "Trezor wiped").centered());
+    messages.add(Paragraph::new(&TEXT_ERROR_BOLD, "successfully.").centered());
 
     let m_top =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
     let mut messages = ParagraphVecShort::new();
-    messages.add(Paragraph::new(&theme::TEXT_SUBMSG, "PLEASE RECONNECT").centered());
-    messages.add(Paragraph::new(&theme::TEXT_SUBMSG, "THE DEVICE").centered());
+    messages.add(Paragraph::new(&TEXT_WIPE_BOLD, "PLEASE RECONNECT").centered());
+    messages.add(Paragraph::new(&TEXT_WIPE_BOLD, "THE DEVICE").centered());
 
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
     let mut frame = ResultScreen::new(
         WHITE,
-        BLD_BG,
+        BLD_WIPE_COLOR,
         Icon::new(ICON_SUCCESS_SMALL),
         m_top,
         m_bottom,
@@ -312,21 +333,21 @@ extern "C" fn screen_wipe_success() -> u32 {
 extern "C" fn screen_wipe_fail() -> u32 {
     let mut messages = ParagraphVecShort::new();
 
-    messages.add(Paragraph::new(&theme::TEXT_BOLD, "Device wipe was").centered());
-    messages.add(Paragraph::new(&theme::TEXT_BOLD, "not successful.").centered());
+    messages.add(Paragraph::new(&TEXT_ERROR_BOLD, "Device wipe was").centered());
+    messages.add(Paragraph::new(&TEXT_ERROR_BOLD, "not successful.").centered());
     let m_top =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
     let mut messages = ParagraphVecShort::new();
 
-    messages.add(Paragraph::new(&theme::TEXT_SUBMSG, "PLEASE RECONNECT").centered());
-    messages.add(Paragraph::new(&theme::TEXT_SUBMSG, "THE DEVICE").centered());
+    messages.add(Paragraph::new(&TEXT_WIPE_BOLD, "PLEASE RECONNECT").centered());
+    messages.add(Paragraph::new(&TEXT_WIPE_BOLD, "THE DEVICE").centered());
     let m_bottom =
         Paragraphs::new(messages).with_placement(LinearPlacement::vertical().align_at_center());
 
     let mut frame = ResultScreen::new(
         WHITE,
-        BLD_BG,
+        BLD_WIPE_COLOR,
         Icon::new(ICON_WARN_SMALL),
         m_top,
         m_bottom,

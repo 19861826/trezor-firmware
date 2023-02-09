@@ -137,7 +137,7 @@ uint32_t ui_screen_intro(const vendor_header *const vhdr,
                          const image_header *const hdr) {
   char bld_ver[32];
   format_ver_bfr("%d.%d.%d", VERSION_UINT32, bld_ver, sizeof(bld_ver));
-  const char *ver_str = format_ver("Firmware %d.%d.%d by", hdr->version);
+  const char *ver_str = format_ver("%d.%d.%d", hdr->version);
 
   return screen_intro(bld_ver, vhdr->vstr, vhdr->vstr_len, ver_str);
 }

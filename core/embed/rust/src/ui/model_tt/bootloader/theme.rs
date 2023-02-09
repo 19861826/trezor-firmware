@@ -15,6 +15,7 @@ use crate::{
 pub const BLD_BG: Color = Color::rgb(0x00, 0x17, 0xA3);
 pub const BLD_FG: Color = WHITE;
 pub const BLD_WIPE_COLOR: Color = Color::rgb(0xAD, 0x2B, 0x2B);
+pub const BLD_WIPE_TEXT_COLOR: Color = Color::rgb(0xD6, 0x95, 0x95);
 
 pub const BLD_WIPE_BTN_COLOR: Color = Color::alpha(BLD_WIPE_COLOR, alpha!(0.3));
 pub const BLD_WIPE_BTN_COLOR_ACTIVE: Color = Color::rgb(0xB9, 0x4B, 0x4B);
@@ -39,8 +40,8 @@ pub const WELCOME_COLOR: Color = BLACK;
 pub const RADIUS: u8 = 2;
 
 // Commonly used constants for UI elements.
-pub const CONTENT_PADDING: i16 = 15;
-pub const TITLE_AREA: Rect = Rect::new(Point::new(CONTENT_PADDING, 16), Point::new(200, 32));
+pub const CONTENT_PADDING: i16 = 10;
+pub const TITLE_AREA: Rect = Rect::new(Point::new(15, 14), Point::new(200, 30));
 pub const CORNER_BUTTON_SIZE: i16 = 32;
 pub const CORNER_BUTTON_PADDING: i16 = 8;
 pub const CORNER_BUTTON_AREA: Rect = Rect::from_top_left_and_size(
@@ -52,7 +53,7 @@ pub const CORNER_BUTTON_AREA: Rect = Rect::from_top_left_and_size(
 );
 pub const TITLE_AREA_HEIGHT: i16 = 16;
 pub const TITLE_AREA_START_Y: i16 = 8;
-pub const BUTTON_AREA_START: i16 = 176;
+pub const BUTTON_AREA_START: i16 = 188;
 
 // UI icons.
 pub const ICON_CANCEL: &[u8] = include_res!("model_tt/res/cancel.toif");
@@ -287,6 +288,13 @@ pub const TEXT_FINGERPRINT: TextStyle =
     TextStyle::new(Font::NORMAL, BLD_FG, BLD_BG, BLD_FG, BLD_FG)
         .with_line_breaking(BreakWordsNoHyphen);
 pub const TEXT_BOLD: TextStyle = TextStyle::new(Font::BOLD, BLD_FG, BLD_BG, BLD_FG, BLD_FG);
+pub const TEXT_WIPE_BOLD: TextStyle = TextStyle::new(
+    Font::BOLD,
+    BLD_WIPE_TEXT_COLOR,
+    BLD_WIPE_COLOR,
+    BLD_WIPE_TEXT_COLOR,
+    BLD_WIPE_TEXT_COLOR,
+);
 pub const TEXT_SUBMSG: TextStyle = TextStyle::new(
     Font::BOLD,
     BLD_COLOR_SUBMSG,

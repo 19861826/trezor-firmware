@@ -17,7 +17,6 @@ use crate::ui::{
         theme::WHITE,
     },
 };
-use heapless::String;
 
 #[derive(Copy, Clone, ToPrimitive)]
 pub enum ConfirmMsg {
@@ -30,13 +29,13 @@ pub struct Confirm<'a> {
     content_pad: Pad,
     bg_color: Color,
     icon: Option<Icon>,
-    title: Option<Child<Label<String<20>>>>,
+    title: Option<Child<Label<&'static str>>>,
     message: Child<Paragraphs<ParagraphVecShort<&'a str>>>,
     left: Child<Button<&'static str>>,
     right: Child<Button<&'static str>>,
     info_button: Option<Button<&'static str>>,
     close_button: Option<Button<&'static str>>,
-    info_title: Option<Child<Label<String<20>>>>,
+    info_title: Option<Child<Label<&'static str>>>,
     info_text: Option<Paragraphs<ParagraphVecShort<&'a str>>>,
     show_info: bool,
 
@@ -67,17 +66,12 @@ impl<'a> Confirm<'a> {
             info_text: None,
             confirm_left,
             show_info: false,
-            title: confirm.0.map(|title| {
-                let mut lbl: String<20> = String::new();
-                unwrap!(lbl.push_str(title));
-                Child::new(Label::new(lbl, Alignment::Start, TEXT_TITLE))
-            }),
+            title: confirm
+                .0
+                .map(|title| Child::new(Label::new(title, Alignment::Start, TEXT_TITLE))),
         };
         if let Some((title, text)) = info {
-            let mut lbl: String<20> = String::new();
-            unwrap!(lbl.push_str(title));
-
-            instance.info_title = Some(Child::new(Label::new(lbl, Alignment::Start, TEXT_TITLE)));
+            instance.info_title = Some(Child::new(Label::new(title, Alignment::Start, TEXT_TITLE)));
             instance.info_text = Some(text);
             instance.info_button = Some(
                 Button::with_icon(Icon::new(INFO_SMALL))
@@ -114,13 +108,13 @@ impl<'a> Component for Confirm<'a> {
             Point::new(WIDTH - CONTENT_PADDING, BUTTON_AREA_START),
         ));
 
-        let button_size = Offset::new(102, 48);
+        let button_size = Offset::new(106, 38);
         self.left.place(Rect::from_top_left_and_size(
             Point::new(CONTENT_PADDING, BUTTON_AREA_START),
             button_size,
         ));
         self.right.place(Rect::from_top_left_and_size(
-            Point::new(123, BUTTON_AREA_START),
+            Point::new(124, BUTTON_AREA_START),
             button_size,
         ));
         self.info_button.place(CORNER_BUTTON_AREA);

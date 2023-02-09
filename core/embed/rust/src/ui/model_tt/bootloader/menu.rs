@@ -1,12 +1,12 @@
 use crate::ui::{
     component::{Child, Component, Event, EventCtx, Label, Pad},
-    constant::screen,
+    constant::{screen, WIDTH},
     display::Icon,
     geometry::{Alignment, Insets, Point, Rect},
     model_tt::{
         bootloader::theme::{
-            button_bld_menu, button_bld_menu_item, BLD_BG, CLOSE, CORNER_BUTTON_AREA, ERASE,
-            REBOOT, TEXT_TITLE, TITLE_AREA,
+            button_bld_menu, button_bld_menu_item, BLD_BG, CLOSE, CONTENT_PADDING,
+            CORNER_BUTTON_AREA, ERASE, REBOOT, TEXT_TITLE, TITLE_AREA,
         },
         component::{Button, ButtonMsg::Clicked, IconText},
     },
@@ -23,7 +23,7 @@ pub enum MenuMsg {
 
 pub struct Menu {
     bg: Pad,
-    title: Child<Label<String<20>>>,
+    title: Child<Label<String<32>>>,
     close: Child<Button<&'static str>>,
     reboot: Child<Button<&'static str>>,
     reset: Child<Button<&'static str>>,
@@ -34,7 +34,7 @@ impl Menu {
         let content_reboot = IconText::new("REBOOT TREZOR", Icon::new(REBOOT));
         let content_reset = IconText::new("WIPE TREZOR", Icon::new(ERASE));
 
-        let mut title: String<20> = String::new();
+        let mut title: String<32> = String::new();
         unwrap!(title.push_str("BOOTLOADER "));
         unwrap!(title.push_str(bld_version));
 
@@ -65,11 +65,13 @@ impl Component for Menu {
         self.bg.place(screen());
         self.title.place(TITLE_AREA);
         self.close.place(CORNER_BUTTON_AREA);
-        self.reboot
-            .place(Rect::new(Point::new(16, 66), Point::new(16 + 209, 66 + 48)));
+        self.reboot.place(Rect::new(
+            Point::new(CONTENT_PADDING, 64),
+            Point::new(WIDTH - CONTENT_PADDING, 64 + 38),
+        ));
         self.reset.place(Rect::new(
-            Point::new(16, 122),
-            Point::new(16 + 209, 122 + 48),
+            Point::new(CONTENT_PADDING, 110),
+            Point::new(WIDTH - CONTENT_PADDING, 110 + 38),
         ));
         bounds
     }
