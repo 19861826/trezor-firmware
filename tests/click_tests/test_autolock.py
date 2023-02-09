@@ -117,7 +117,7 @@ def test_autolock_passphrase_keyboard(device_handler: "BackgroundDeviceHandler")
         time.sleep(1.5)
 
     debug.click(buttons.OK, wait=True)
-    assert device_handler.result() == "mzAZ4BgqmFHYxhPgdFH2pR2h1X7jJrNFSs"
+    assert device_handler.result() == "mnF4yRWJXmzRB6EuBzuVigqeqTqirQupxJ"
 
 
 @pytest.mark.setup_client(pin=PIN4, passphrase=True)
